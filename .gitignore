@@ -16,3 +16,6 @@
 # JetBrains
 .idea
 *.iml
+
+.build-harness
+dist/bin/*
