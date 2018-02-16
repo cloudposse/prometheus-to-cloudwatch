@@ -1,0 +1,16 @@
+apiVersion: v1
+name: cloudposse/prometheus-to-cloudwatch
+description: Install cloudposse/prometheus-to-cloudwatch to send the cluster-level metrics to AWS CloudWatch
+keywords:
+- metric
+- monitoring
+- Prometheus
+- CloudWatch
+version: 0.1.0
+appVersion: 1.1.0
+home: https://github.com/cloudposse/prometheus-to-cloudwatch/
+sources:
+- https://github.com/cloudposse/prometheus-to-cloudwatch/
+maintainers:
+- name: Cloud Posse, LLC
+  email: ops@cloudposse.com
