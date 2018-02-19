@@ -1,0 +1,44 @@
+# Default values for prometheus-to-cloudwatch.
+prometheusScrape: true
+image:
+  repository: k8s.gcr.io/prometheus-to-cloudwatch
+  tag: v1.1.0
+  pullPolicy: IfNotPresent
+service:
+  port: 8080
+  # Default to clusterIP for backward compatibility
+  type: ClusterIP
+  nodePort: 0
+  loadBalancerIP: ""
+rbac:
+  # If true, create & use RBAC resources
+  create: false
+  # Ignored if rbac.create is true
+  serviceAccountName: default
+
+## Node labels for pod assignment
+## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+nodeSelector: {}
+
+# Annotations to be added to the pod
+podAnnotations: {}
+
+# Available collectors for prometheus-to-cloudwatch. By default all available
+# collectors are enabled.
+collectors:
+  daemonsets: true
+  deployments: true
+  limitranges: true
+  nodes: true
+  pods: true
+  replicasets: true
+  replicationcontrollers: true
+  resourcequotas: true
+  services: true
+  jobs: true
+  cronjobs: true
+  statefulsets: true
+  persistentvolumeclaims: true
+
+# Namespace to be enabled for collecting resources. By default all namespaces are collected.
+# namespace: ""
