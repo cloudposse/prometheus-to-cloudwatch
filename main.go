@@ -56,6 +56,6 @@ func main() {
 		log.Fatal("prometheus-to-cloudwatch: error: ", err)
 	}
 
+	fmt.Println("prometheus-to-cloudwatch: Starting prometheus-to-cloudwatch bridge")
 	bridge.Run(context.Background())
-	fmt.Println("prometheus-to-cloudwatch: Started prometheus-to-cloudwatch bridge")
 }

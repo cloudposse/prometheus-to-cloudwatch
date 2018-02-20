@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
@@ -96,10 +97,13 @@ func (b *Bridge) Run(ctx context.Context) {
 			mfs, err := b.gatherer.Gather()
 			if err != nil {
 				log.Println("prometheus-to-cloudwatch: error gathering metrics from Prometheus:", err)
-			}
-			err = b.publishMetrics(mfs)
-			if err != nil {
-				log.Println("prometheus-to-cloudwatch: error publishing to Cloudwatch:", err)
+			} else if len(mfs) > 0 {
+				err = b.publishMetrics(mfs)
+				if err != nil {
+					log.Println("prometheus-to-cloudwatch: error publishing to CloudWatch:", err)
+				} else {
+					log.Println(fmt.Sprintf("prometheus-to-cloudwatch: published %d metrics to CloudWatch", len(mfs)))
+				}
 			}
 		case <-ctx.Done():
 			log.Println("prometheus-to-cloudwatch: stopping")
@@ -128,7 +132,7 @@ func (b *Bridge) publishMetrics(mfs []*dto.MetricFamily) error {
 		// 40KB CloudWatch size limitation
 		if len(data) == batchSize {
 			if err := b.flush(data); err != nil {
-				log.Println("prometheus-to-cloudwatch: error publishing to Cloudwatch:", err)
+				log.Println("prometheus-to-cloudwatch: error publishing to CloudWatch:", err)
 			}
 			data = make([]*cloudwatch.MetricDatum, 0, batchSize)
 		}
