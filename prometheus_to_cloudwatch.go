@@ -24,7 +24,7 @@ const (
 	cwUnitLabel    = "__cw_unit"
 )
 
-// Config defines configuration options for Bridge
+// Config defines configuration options
 type Config struct {
 	// Required. The Prometheus namespace/prefix to scrape. Each Bridge only supports 1 prefix.
 	// If multiple prefixes are required, multiple Bridges must be used.
@@ -137,7 +137,7 @@ func NewBridge(c *Config) (*Bridge, error) {
 		b.blacklist[v] = struct{}{}
 	}
 
-	// Use default credential provider, which I believe supports the standard
+	// Use default credential provider, which supports the standard
 	// AWS_* environment variables, and the shared credential file under ~/.aws
 	sess, err := session.NewSession(aws.NewConfig().WithHTTPClient(client).WithRegion(c.CloudWatchRegion))
 	if err != nil {
@@ -302,7 +302,6 @@ func getResolution(m model.Metric) int64 {
 	return 60
 }
 
-// TODO: can we infer the proper unit based on the metric name?
 func getUnit(m model.Metric) string {
 	if u, ok := m[cwUnitLabel]; ok {
 		return string(u)

@@ -88,7 +88,7 @@ func Test_getUnit(t *testing.T) {
 		m        model.Metric
 		expected string
 	}{
-		"default": {model.Metric{}, ""},
+		"default": {model.Metric{}, "None"},
 		"custom":  {model.Metric{cwUnitLabel: "Bytes"}, "Bytes"},
 	}
 
