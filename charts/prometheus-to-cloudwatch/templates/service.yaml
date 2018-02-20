@@ -7,10 +7,6 @@ metadata:
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     release: "{{ .Release.Name }}"
     heritage: "{{ .Release.Service }}"
-  {{- if .Values.prometheusScrape }}
-  annotations:
-    prometheus.io/scrape: '{{ .Values.prometheusScrape }}'
-  {{- end }}
 spec:
   type: "{{ .Values.service.type }}"
   ports:
@@ -20,7 +16,7 @@ spec:
   {{- if .Values.service.nodePort }}
     nodePort: {{ .Values.service.nodePort }}
   {{- end }}
-    targetPort: 8080
+    targetPort: {{ .Values.service.port }}
 {{- if .Values.service.loadBalancerIP }}
   loadBalancerIP: "{{ .Values.service.loadBalancerIP }}"
 {{- end }}
