@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -15,21 +14,17 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
+	"log"
 )
 
 const (
-	batchSize = 20
-
+	batchSize      = 20
 	cwHighResLabel = "__cw_high_res"
 	cwUnitLabel    = "__cw_unit"
 )
 
 // Config defines configuration options
 type Config struct {
-	// Required. The Prometheus namespace/prefix to scrape. Each Bridge only supports 1 prefix.
-	// If multiple prefixes are required, multiple Bridges must be used.
-	PrometheusNamespace string
-
 	// Required. The CloudWatch namespace under which metrics should be published
 	CloudWatchNamespace string
 
@@ -37,48 +32,18 @@ type Config struct {
 	CloudWatchRegion string
 
 	// The frequency with which metrics should be published to Cloudwatch. Default: 15s
-	Interval time.Duration
+	CloudWatchPublishInterval time.Duration
 
-	// Timeout for sending metrics to Cloudwatch. Default: 1s
-	Timeout time.Duration
-
-	// Custom HTTP Client to use with the Cloudwatch API. Default: http.Client{}
-	// If Config.Timeout is supplied, it will override any timeout defined on
-	// the supplied http.Client
-	Client *http.Client
-
-	// Logger that messages are written to. Default: nil
-	Logger Logger
-
-	// The Gatherer to use for metrics. Default: prometheus.DefaultGatherer
-	Gatherer prometheus.Gatherer
-
-	// Only publish whitelisted metrics
-	WhitelistOnly bool
-
-	// List of metrics that should be published, causing all others to be ignored.
-	// Config.WhitelistOnly must be set to true for this to take effect.
-	Whitelist []string
-
-	// List of metrics that should never be published. This setting overrides entries in Config.Whitelist
-	Blacklist []string
+	// Timeout for sending metrics to Cloudwatch. Default: 3s
+	CloudWatchPublishTimeout time.Duration
 }
 
-// Bridge pushes metrics to AWS Cloudwatch
+// Bridge pushes metrics to AWS CloudWatch
 type Bridge struct {
-	interval time.Duration
-	timeout  time.Duration
-
-	promNamespace string
-	cwNamespace   string
-
-	useWhitelist bool
-	whitelist    map[string]struct{}
-	blacklist    map[string]struct{}
-
-	logger Logger
-	g      prometheus.Gatherer
-	cw     *cloudwatch.CloudWatch
+	cloudWatchPublishInterval time.Duration
+	cloudWatchNamespace       string
+	gatherer                  prometheus.Gatherer
+	cw                        *cloudwatch.CloudWatch
 }
 
 // NewBridge initializes and returns a pointer to a Bridge using the
@@ -87,55 +52,26 @@ type Bridge struct {
 func NewBridge(c *Config) (*Bridge, error) {
 	b := &Bridge{}
 
-	if c.PrometheusNamespace == "" {
-		return nil, errors.New("PrometheusNamespace must not be empty")
-	}
-	b.promNamespace = c.PrometheusNamespace
-
 	if c.CloudWatchNamespace == "" {
 		return nil, errors.New("CloudWatchNamespace must not be empty")
 	}
-	b.cwNamespace = c.CloudWatchNamespace
+	b.cloudWatchNamespace = c.CloudWatchNamespace
 
-	if c.Interval > 0 {
-		b.interval = c.Interval
+	if c.CloudWatchPublishInterval > 0 {
+		b.cloudWatchPublishInterval = c.CloudWatchPublishInterval
 	} else {
-		b.interval = 15 * time.Second
+		b.cloudWatchPublishInterval = 15 * time.Second
 	}
 
-	var client *http.Client
-	if c.Client != nil {
-		client = c.Client
+	var client = http.DefaultClient
+
+	if c.CloudWatchPublishTimeout > 0 {
+		client.Timeout = c.CloudWatchPublishTimeout
 	} else {
-		client = &http.Client{}
+		client.Timeout = 3 * time.Second
 	}
 
-	if c.Timeout > 0 {
-		client.Timeout = c.Timeout
-	} else {
-		client.Timeout = time.Second
-	}
-
-	if c.Logger != nil {
-		b.logger = c.Logger
-	}
-
-	if c.Gatherer != nil {
-		b.g = c.Gatherer
-	} else {
-		b.g = prometheus.DefaultGatherer
-	}
-
-	b.useWhitelist = c.WhitelistOnly
-	b.whitelist = make(map[string]struct{}, len(c.Whitelist))
-	for _, v := range c.Whitelist {
-		b.whitelist[v] = struct{}{}
-	}
-
-	b.blacklist = make(map[string]struct{}, len(c.Blacklist))
-	for _, v := range c.Blacklist {
-		b.blacklist[v] = struct{}{}
-	}
+	b.gatherer = prometheus.DefaultGatherer
 
 	// Use default credential provider, which supports the standard
 	// AWS_* environment variables, and the shared credential file under ~/.aws
@@ -148,44 +84,28 @@ func NewBridge(c *Config) (*Bridge, error) {
 	return b, nil
 }
 
-// Logger is the minimal interface Bridge needs for logging. Note that
-// log.Logger from the standard library implements this interface, and it is
-// easy to implement by custom loggers, if they don't do so already anyway.
-// Taken from https://github.com/prometheus/client_golang/blob/master/prometheus/graphite/bridge.go
-type Logger interface {
-	Println(v ...interface{})
-}
-
 // Run starts a loop that will push metrics to Cloudwatch at the
-// configured interval. Run accepts a context.Context to support
-// cancellation.
+// configured interval. Accepts a context.Context to support cancellation
 func (b *Bridge) Run(ctx context.Context) {
-	ticker := time.NewTicker(b.interval)
+	ticker := time.NewTicker(b.cloudWatchPublishInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			if err := b.Publish(); err != nil && b.logger != nil {
-				b.logger.Println("error publishing to Cloudwatch:", err)
+			mfs, err := b.gatherer.Gather()
+			if err != nil {
+				log.Println("prometheus-to-cloudwatch: error gathering metrics from Prometheus:", err)
+			}
+			err = b.publishMetrics(mfs)
+			if err != nil {
+				log.Println("prometheus-to-cloudwatch: error publishing to Cloudwatch:", err)
 			}
 		case <-ctx.Done():
-			if b.logger != nil {
-				b.logger.Println("stopping Cloudwatch publisher")
-			}
+			log.Println("prometheus-to-cloudwatch: stopping")
 			return
 		}
 	}
-}
-
-// Publish publishes the Prometheus metrics to Cloudwatch
-func (b *Bridge) Publish() error {
-	mfs, err := b.g.Gather()
-	if err != nil {
-		return err
-	}
-
-	return b.publishMetrics(mfs)
 }
 
 // NOTE: The CloudWatch API has the following limitations:
@@ -193,24 +113,22 @@ func (b *Bridge) Publish() error {
 //		- Single namespace per request
 //		- Max 10 dimensions per metric
 func (b *Bridge) publishMetrics(mfs []*dto.MetricFamily) error {
-	vec, err := expfmt.ExtractSamples(&expfmt.DecodeOptions{
-		Timestamp: model.Now(),
-	}, mfs...)
+	vec, err := expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: model.Now()}, mfs...)
+
 	if err != nil {
 		return err
 	}
 
 	data := make([]*cloudwatch.MetricDatum, 0, batchSize)
+
 	for _, s := range vec {
 		name := getName(s.Metric)
-		if b.isWhitelisted(name) {
-			data = appendDatum(data, name, s)
-		}
+		data = appendDatum(data, name, s)
 
-		// punt on the 40KB size limitation. Will see how this works out in practice
+		// 40KB CloudWatch size limitation
 		if len(data) == batchSize {
 			if err := b.flush(data); err != nil {
-				b.logger.Println("error publishing to Cloudwatch:", err)
+				log.Println("prometheus-to-cloudwatch: error publishing to Cloudwatch:", err)
 			}
 			data = make([]*cloudwatch.MetricDatum, 0, batchSize)
 		}
@@ -223,29 +141,12 @@ func (b *Bridge) flush(data []*cloudwatch.MetricDatum) error {
 	if len(data) > 0 {
 		in := &cloudwatch.PutMetricDataInput{
 			MetricData: data,
-			Namespace:  &b.cwNamespace,
+			Namespace:  &b.cloudWatchNamespace,
 		}
 		_, err := b.cw.PutMetricData(in)
 		return err
 	}
 	return nil
-}
-
-func (b *Bridge) isWhitelisted(name string) bool {
-	if !strings.HasPrefix(name, b.promNamespace) {
-		return false
-	} else if _, ok := b.blacklist[name]; ok {
-		return false
-	}
-
-	if b.useWhitelist {
-		if name == "" {
-			return false
-		}
-		_, ok := b.whitelist[name]
-		return ok
-	}
-	return true
 }
 
 func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample) []*cloudwatch.MetricDatum {
@@ -267,7 +168,6 @@ func getName(m model.Metric) string {
 }
 
 // getDimensions returns up to 10 dimensions for the provided metric - one for each label (except the __name__ label)
-//
 // If a metric has more than 10 labels, it attempts to behave deterministically by sorting the labels lexicographically,
 // and returning the first 10 labels as dimensions
 func getDimensions(m model.Metric) []*cloudwatch.Dimension {
