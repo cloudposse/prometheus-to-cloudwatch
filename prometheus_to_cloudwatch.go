@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/prometheus/client_golang/prometheus"
-	dto "github.com/prometheus/client_model/go"
+	prometheusModel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 	"log"
@@ -116,7 +116,7 @@ func (b *Bridge) Run(ctx context.Context) {
 //		- Max 40kb request size
 //		- Single namespace per request
 //		- Max 10 dimensions per metric
-func (b *Bridge) publishMetrics(mfs []*dto.MetricFamily) error {
+func (b *Bridge) publishMetrics(mfs []*prometheusModel.MetricFamily) error {
 	vec, err := expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: model.Now()}, mfs...)
 
 	if err != nil {
@@ -198,7 +198,7 @@ func getDimensions(m model.Metric) []*cloudwatch.Dimension {
 	return dims
 }
 
-// Returns 1 if the metric contains a __cw_high_res label, otherwise it return 60
+// Returns 1 if the metric contains a __cw_high_res label, otherwise returns 60
 func getResolution(m model.Metric) int64 {
 	if _, ok := m[cwHighResLabel]; ok {
 		return 1
