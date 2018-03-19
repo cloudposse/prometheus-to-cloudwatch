@@ -19,21 +19,21 @@ services:
 
 install:
 - make init
-- make travis:docker-login
-- make go:deps-build
-- make go:deps-dev
+- make travis/docker-login
+- make go/deps-build
+- make go/deps-dev
 - make go-get
 
 script:
-- make go:deps
-- make go:test
-- make go:lint
-- make go:build-all
+- make go/deps
+- make go/test
+- make go/lint
+- make go/build-all
 - ls -l release/
-- make docker:build
+- make docker/build
 
 after_success:
-- make travis:docker-tag-and-push
+- make travis/docker-tag-and-push
 
 deploy:
   - provider: releases

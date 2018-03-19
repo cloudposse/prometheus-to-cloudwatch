@@ -1,4 +1,0 @@
-dependencies:
-  - name: kube-state-metrics
-    version: ~0.5.3
-    repository: "@stable"

@@ -1,4 +1,0 @@
-prometheus-to-cloudwatch is a simple service that listens to the Prometheus API and sends the metrics to CloudWatch.
-
-The exposed metrics can be found here:
-https://github.com/kubernetes/kube-state-metrics/tree/master/Documentation#documentation.
