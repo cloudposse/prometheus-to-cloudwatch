@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/prometheus/client_golang/prometheus"
-	prometheusModel "github.com/prometheus/client_model/go"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 	"log"
@@ -98,7 +98,7 @@ func (b *Bridge) Run(ctx context.Context) {
 			if err != nil {
 				log.Println("prometheus-to-cloudwatch: error gathering metrics from Prometheus:", err)
 			} else if len(mfs) > 0 {
-				err = b.publishMetrics(mfs)
+				err = b.publishMetricsToCloudWatch(mfs)
 				if err != nil {
 					log.Println("prometheus-to-cloudwatch: error publishing to CloudWatch:", err)
 				} else {
@@ -116,7 +116,7 @@ func (b *Bridge) Run(ctx context.Context) {
 //		- Max 40kb request size
 //		- Single namespace per request
 //		- Max 10 dimensions per metric
-func (b *Bridge) publishMetrics(mfs []*prometheusModel.MetricFamily) error {
+func (b *Bridge) publishMetricsToCloudWatch(mfs []*dto.MetricFamily) error {
 	vec, err := expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: model.Now()}, mfs...)
 
 	if err != nil {
