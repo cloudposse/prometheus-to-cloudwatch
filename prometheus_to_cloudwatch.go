@@ -37,6 +37,18 @@ type Config struct {
 
 	// Timeout for sending metrics to Cloudwatch. Default: 3s
 	CloudWatchPublishTimeout time.Duration
+
+	// Prometheus scrape URL
+	PrometheusScrapeUrl string
+
+	// Path to Certificate file
+	PrometheusCertPath string
+
+	// Path to Key file
+	PrometheusKeyPath string
+
+	// Accept any certificate during TLS handshake. Insecure, use only for testing
+	PrometheusSkipServerCertCheck bool
 }
 
 // Bridge pushes metrics to AWS CloudWatch
@@ -48,8 +60,7 @@ type Bridge struct {
 }
 
 // NewBridge initializes and returns a pointer to a Bridge using the
-// supplied configuration, or an error if there is a problem with
-// the configuration
+// supplied configuration, or an error if there is a problem with the configuration
 func NewBridge(c *Config) (*Bridge, error) {
 	b := &Bridge{}
 
