@@ -1,5 +1,6 @@
 Make sure to define define the following settings in `values.yaml`:
 
+env:
   - CLOUDWATCH_NAMESPACE
   - CLOUDWATCH_REGION
   - CLOUDWATCH_PUBLISH_TIMEOUT
@@ -8,3 +9,7 @@ Make sure to define define the following settings in `values.yaml`:
   - PROMETHEUS_CERT_PATH
   - PROMETHEUS_KEY_PATH
   - PROMETHEUS_ACCEPT_INVALID_CERT
+
+secrets:
+  - AWS_ACCESS_KEY_ID
+  - AWS_SECRET_ACCESS_KEY

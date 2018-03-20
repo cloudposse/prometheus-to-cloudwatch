@@ -36,7 +36,17 @@ spec:
               value: {{ $value | quote }}
 {{- end }}
 {{- end }}
-          resources:
+{{- $secret_name := include "prometheus-to-cloudwatch.fullname" . }}
+{{- range $name, $value := .Values.secrets }}
+{{- if not ( empty $value) }}
+            - name: {{ $name | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret_name }}
+                  key: {{ $name | quote }}
+{{- end }}
+{{- end }}
+      resources:
 {{ toYaml .Values.resources | indent 12 }}
     {{- with .Values.nodeSelector }}
       nodeSelector:
