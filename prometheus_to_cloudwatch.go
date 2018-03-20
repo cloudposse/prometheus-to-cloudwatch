@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/matttproud/golang_protobuf_extensions/pbutil"
@@ -29,6 +30,12 @@ const (
 
 // Config defines configuration options
 type Config struct {
+	// AWS access key Id with permissions to publish CloudWatch metrics
+	AwsAccessKeyId string
+
+	// AWS secret access key with permissions to publish CloudWatch metrics
+	AwsSecretAccessKey string
+
 	// Required. The CloudWatch namespace under which metrics should be published
 	CloudWatchNamespace string
 
@@ -102,9 +109,10 @@ func NewBridge(c *Config) (*Bridge, error) {
 		return nil, errors.New("CloudWatchRegion required")
 	}
 
-	// Use default credential provider, which supports the standard
-	// AWS_* environment variables, and the shared credential file under ~/.aws
-	sess, err := session.NewSession(aws.NewConfig().WithHTTPClient(client).WithRegion(c.CloudWatchRegion))
+	// https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html
+	config := aws.NewConfig().WithHTTPClient(client).WithRegion(c.CloudWatchRegion).WithCredentials(credentials.NewStaticCredentials(c.AwsAccessKeyId, c.AwsSecretAccessKey, ""))
+
+	sess, err := session.NewSession(config)
 	if err != nil {
 		return nil, err
 	}

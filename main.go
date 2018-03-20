@@ -11,6 +11,8 @@ import (
 )
 
 var (
+	awsAccessKeyId           = flag.String("aws_access_key_id", os.Getenv("AWS_ACCESS_KEY_ID"), "AWS access key Id with permissions to publish CloudWatch metrics")
+	awsSecretAccessKey       = flag.String("aws_secret_access_key", os.Getenv("AWS_SECRET_ACCESS_KEY"), "AWS secret access key with permissions to publish CloudWatch metrics")
 	cloudWatchNamespace      = flag.String("cloudwatch_namespace", os.Getenv("CLOUDWATCH_NAMESPACE"), "CloudWatch Namespace")
 	cloudWatchRegion         = flag.String("cloudwatch_region", os.Getenv("CLOUDWATCH_REGION"), "CloudWatch Region")
 	cloudWatchPublishTimeout = flag.String("cloudwatch_publish_timeout", os.Getenv("CLOUDWATCH_PUBLISH_TIMEOUT"), "CloudWatch publish timeout in seconds")
@@ -24,21 +26,29 @@ var (
 func main() {
 	flag.Parse()
 
+	if *awsAccessKeyId == "" {
+		flag.PrintDefaults()
+		log.Fatal("prometheus-to-cloudwatch: Error: -aws_access_key_id or AWS_ACCESS_KEY_ID required")
+	}
+	if *awsSecretAccessKey == "" {
+		flag.PrintDefaults()
+		log.Fatal("prometheus-to-cloudwatch: Error: -aws_secret_access_key or AWS_SECRET_ACCESS_KEY required")
+	}
 	if *cloudWatchNamespace == "" {
 		flag.PrintDefaults()
-		log.Fatal("-cloudwatch_namespace or CLOUDWATCH_NAMESPACE required")
+		log.Fatal("prometheus-to-cloudwatch: Error: -cloudwatch_namespace or CLOUDWATCH_NAMESPACE required")
 	}
 	if *cloudWatchRegion == "" {
 		flag.PrintDefaults()
-		log.Fatal("-cloudwatch_region or CLOUDWATCH_REGION required")
+		log.Fatal("prometheus-to-cloudwatch: Error: -cloudwatch_region or CLOUDWATCH_REGION required")
 	}
 	if *prometheusScrapeUrl == "" {
 		flag.PrintDefaults()
-		log.Fatal("-prometheus_scrape_url or PROMETHEUS_SCRAPE_URL required")
+		log.Fatal("prometheus-to-cloudwatch: Error: -prometheus_scrape_url or PROMETHEUS_SCRAPE_URL required")
 	}
 	if (*certPath != "" && *keyPath == "") || (*certPath == "" && *keyPath != "") {
 		flag.PrintDefaults()
-		log.Fatal("When using SSL, both -prometheus_cert_path and -prometheus_key_path are required. If not using SSL, do not provide any of them")
+		log.Fatal("prometheus-to-cloudwatch: Error: when using SSL, both -prometheus_cert_path and -prometheus_key_path are required. If not using SSL, do not provide any of them")
 	}
 
 	var skipCertCheck = true
@@ -57,6 +67,8 @@ func main() {
 		PrometheusCertPath:            *certPath,
 		PrometheusKeyPath:             *keyPath,
 		PrometheusSkipServerCertCheck: skipCertCheck,
+		AwsAccessKeyId:                *awsAccessKeyId,
+		AwsSecretAccessKey:            *awsSecretAccessKey,
 	}
 
 	if *prometheusScrapeInterval != "" {
