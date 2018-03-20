@@ -1,4 +1,4 @@
-Make sure to define define the following settings in `values.yaml`:
+Make sure to define the following settings in `values.yaml`:
 
 env:
   - CLOUDWATCH_NAMESPACE

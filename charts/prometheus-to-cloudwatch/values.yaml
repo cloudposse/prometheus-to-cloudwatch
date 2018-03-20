@@ -7,17 +7,14 @@ env:
   CLOUDWATCH_REGION: "us-east-1"
   CLOUDWATCH_PUBLISH_TIMEOUT: "5"
   PROMETHEUS_SCRAPE_INTERVAL: "20"
-  PROMETHEUS_SCRAPE_URL: "http://kindly-cow-kube-state-metrics:8080/metrics"
+  PROMETHEUS_SCRAPE_URL: "http://xxxxxxxxxxxx:8080/metrics"
   PROMETHEUS_CERT_PATH: ""
   PROMETHEUS_KEY_PATH: ""
   PROMETHEUS_ACCEPT_INVALID_CERT: "true"
 
 secrets:
-  AWS_ACCESS_KEY_ID: XXXXXXXXX
-  AWS_SECRET_ACCESS_KEY: XXXXXXXXXX
-
-#annotations:
-#  iam.amazonaws.com/role: "cp-prod-kube-state-metrics"
+  AWS_ACCESS_KEY_ID: XXXXXXXXXXXXXXXXXXXXXXX
+  AWS_SECRET_ACCESS_KEY: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 image:
   repository: "cloudposse/prometheus-to-cloudwatch"

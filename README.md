@@ -23,16 +23,6 @@ Command-line arguments take precedence over ENV vars
 | accept_invalid_cert          | ACCEPT_INVALID_CERT          | Accept any certificate during TLS handshake. Insecure, use only for testing   |
 
 
-## Examples
-
-### build the Docker image
-__NOTE__: it will download all `Go` dependencies and then build the program inside the container (see [`Dockerfile`](Dockerfile))
-
-
-```sh
-docker build --tag prometheus-to-cloudwatch  --no-cache=true .
-```
-
 
 ## Help
 

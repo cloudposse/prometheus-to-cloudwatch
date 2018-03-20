@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	batchSize      = 20
+	batchSize      = 10
 	cwHighResLabel = "__cw_high_res"
 	cwUnitLabel    = "__cw_unit"
 	acceptHeader   = `application/vnd.google.protobuf;proto=io.prometheus.client.MetricFamily;encoding=delimited;q=0.7,text/plain;version=0.0.4;q=0.3`
@@ -170,7 +170,6 @@ func (b *Bridge) publishMetricsToCloudWatch(mfs []*dto.MetricFamily) error {
 		name := getName(s.Metric)
 		data = appendDatum(data, name, s)
 
-		// 40KB CloudWatch size limitation
 		if len(data) == batchSize {
 			if err := b.flush(data); err != nil {
 				log.Println("prometheus-to-cloudwatch: error publishing to CloudWatch:", err)
@@ -195,13 +194,21 @@ func (b *Bridge) flush(data []*cloudwatch.MetricDatum) error {
 }
 
 func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample) []*cloudwatch.MetricDatum {
+	metric := s.Metric
+
+	if len(metric) == 0 {
+		return data
+	}
+
 	d := &cloudwatch.MetricDatum{}
+
 	d.SetMetricName(name).
 		SetValue(float64(s.Value)).
 		SetTimestamp(s.Timestamp.Time()).
-		SetDimensions(getDimensions(s.Metric)).
-		SetStorageResolution(getResolution(s.Metric)).
-		SetUnit(getUnit(s.Metric))
+		SetDimensions(getDimensions(metric)).
+		SetStorageResolution(getResolution(metric)).
+		SetUnit(getUnit(metric))
+
 	return append(data, d)
 }
 
@@ -213,14 +220,14 @@ func getName(m model.Metric) string {
 }
 
 // getDimensions returns up to 10 dimensions for the provided metric - one for each label (except the __name__ label)
-// If a metric has more than 10 labels, it attempts to behave deterministically by sorting the labels lexicographically,
-// and returning the first 10 labels as dimensions
+// If a metric has more than 10 labels, it attempts to behave deterministically and returning the first 10 labels as dimensions
 func getDimensions(m model.Metric) []*cloudwatch.Dimension {
 	if len(m) == 0 {
 		return make([]*cloudwatch.Dimension, 0)
 	} else if _, ok := m[model.MetricNameLabel]; len(m) == 1 && ok {
 		return make([]*cloudwatch.Dimension, 0)
 	}
+
 	names := make([]string, 0, len(m))
 	for k := range m {
 		if !(k == model.MetricNameLabel || k == cwHighResLabel || k == cwUnitLabel) {
@@ -229,13 +236,21 @@ func getDimensions(m model.Metric) []*cloudwatch.Dimension {
 	}
 
 	sort.Strings(names)
-	if len(names) > 10 {
-		names = names[:10]
-	}
 	dims := make([]*cloudwatch.Dimension, 0, len(names))
-	for _, k := range names {
-		dims = append(dims, new(cloudwatch.Dimension).SetName(k).SetValue(string(m[model.LabelName(k)])))
+
+	for _, name := range names {
+		if name != "" {
+			val := string(m[model.LabelName(name)])
+			if val != "" {
+				dims = append(dims, new(cloudwatch.Dimension).SetName(name).SetValue(val))
+			}
+		}
 	}
+
+	if len(dims) > 10 {
+		dims = dims[:10]
+	}
+
 	return dims
 }
 
