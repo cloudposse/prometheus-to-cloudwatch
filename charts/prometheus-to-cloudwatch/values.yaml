@@ -1,6 +1,7 @@
 # Default values for prometheus-to-cloudwatch
 #
 replicaCount: 1
+
 env:
   CLOUDWATCH_NAMESPACE: "prometheus-to-cloudwatch"
   CLOUDWATCH_REGION: "us-east-1"

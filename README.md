@@ -1,6 +1,26 @@
 # prometheus-to-cloudwatch [![Build Status](https://travis-ci.org/cloudposse/prometheus-to-cloudwatch.svg?branch=master)](https://travis-ci.org/cloudposse/prometheus-to-cloudwatch)
 
-![Golang Metrics to CloudWatch](images/golang-metrics-to-cloudwatch.png)
+Utility for scraping Prometheus metrics from a Prometheus client endpoint and publish them to CloudWatch.
+
+
+## Usage
+
+__NOTE__: The module accepts parameters as command-line arguments or as ENV variables (or any combination of command-line arguments and ENV vars).
+Command-line arguments take precedence over ENV vars
+
+
+| Command-line argument        |  ENV var                     |  Description                                                                  |
+|:-----------------------------|:-----------------------------|:------------------------------------------------------------------------------|
+| aws_access_key_id            | AWS_ACCESS_KEY_ID            | AWS access key Id with permissions to publish CloudWatch metrics              |
+| aws_secret_access_key        | AWS_SECRET_ACCESS_KEY        | AWS secret access key with permissions to publish CloudWatch metrics          |
+| cloudwatch_namespace         | CLOUDWATCH_NAMESPACE         | CloudWatch Namespace                                                          |
+| cloudwatch_region            | CLOUDWATCH_REGION            | CloudWatch AWS Region                                                         |
+| cloudwatch_publish_timeout   | CLOUDWATCH_PUBLISH_TIMEOUT   | CloudWatch publish timeout in seconds                                         |
+| prometheus_scrape_interval   | PROMETHEUS_SCRAPE_INTERVAL   | Prometheus scrape interval in seconds                                         |
+| prometheus_scrape_url        | PROMETHEUS_SCRAPE_URL        | Prometheus scrape URL                                                         |
+| cert_path                    | CERT_PATH                    | Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)     |
+| keyPath                      | KEY_PATH                     | Path to Key file (when using SSL for `prometheus_scrape_url`)                 |
+| accept_invalid_cert          | ACCEPT_INVALID_CERT          | Accept any certificate during TLS handshake. Insecure, use only for testing   |
 
 
 ## Examples

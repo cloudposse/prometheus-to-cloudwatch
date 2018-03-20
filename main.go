@@ -11,14 +11,14 @@ import (
 )
 
 var (
-	cloudWatchNamespace           = flag.String("cloudwatch_namespace", os.Getenv("CLOUDWATCH_NAMESPACE"), "CloudWatch Namespace")
-	cloudWatchRegion              = flag.String("cloudwatch_region", os.Getenv("CLOUDWATCH_REGION"), "CloudWatch Region")
-	cloudWatchPublishTimeout      = flag.String("cloudwatch_publish_timeout", os.Getenv("CLOUDWATCH_PUBLISH_TIMEOUT"), "CloudWatch publish timeout in seconds")
-	prometheusScrapeInterval      = flag.String("prometheus_scrape_interval", os.Getenv("PROMETHEUS_SCRAPE_INTERVAL"), "Prometheus scrape interval in seconds")
-	prometheusScrapeUrl           = flag.String("prometheus_scrape_url", os.Getenv("PROMETHEUS_SCRAPE_URL"), "Prometheus scrape URL")
-	prometheusCertPath            = flag.String("prometheus_cert_path", os.Getenv("PROMETHEUS_CERT_PATH"), "Path to Certificate file")
-	prometheusKeyPath             = flag.String("prometheus_key_path", os.Getenv("PROMETHEUS_KEY_PATH"), "Path to Key file")
-	prometheusSkipServerCertCheck = flag.String("prometheus_accept_invalid_cert", os.Getenv("PROMETHEUS_ACCEPT_INVALID_CERT"), "Accept any certificate during TLS handshake. Insecure, use only for testing")
+	cloudWatchNamespace      = flag.String("cloudwatch_namespace", os.Getenv("CLOUDWATCH_NAMESPACE"), "CloudWatch Namespace")
+	cloudWatchRegion         = flag.String("cloudwatch_region", os.Getenv("CLOUDWATCH_REGION"), "CloudWatch Region")
+	cloudWatchPublishTimeout = flag.String("cloudwatch_publish_timeout", os.Getenv("CLOUDWATCH_PUBLISH_TIMEOUT"), "CloudWatch publish timeout in seconds")
+	prometheusScrapeInterval = flag.String("prometheus_scrape_interval", os.Getenv("PROMETHEUS_SCRAPE_INTERVAL"), "Prometheus scrape interval in seconds")
+	prometheusScrapeUrl      = flag.String("prometheus_scrape_url", os.Getenv("PROMETHEUS_SCRAPE_URL"), "Prometheus scrape URL")
+	certPath                 = flag.String("cert_path", os.Getenv("CERT_PATH"), "Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)")
+	keyPath                  = flag.String("key_path", os.Getenv("KEY_PATH"), "Path to Key file (when using SSL for `prometheus_scrape_url`)")
+	skipServerCertCheck      = flag.String("accept_invalid_cert", os.Getenv("ACCEPT_INVALID_CERT"), "Accept any certificate during TLS handshake. Insecure, use only for testing")
 )
 
 func main() {
@@ -36,16 +36,16 @@ func main() {
 		flag.PrintDefaults()
 		log.Fatal("-prometheus_scrape_url or PROMETHEUS_SCRAPE_URL required")
 	}
-	if (*prometheusCertPath != "" && *prometheusKeyPath == "") || (*prometheusCertPath == "" && *prometheusKeyPath != "") {
+	if (*certPath != "" && *keyPath == "") || (*certPath == "" && *keyPath != "") {
 		flag.PrintDefaults()
 		log.Fatal("When using SSL, both -prometheus_cert_path and -prometheus_key_path are required. If not using SSL, do not provide any of them")
 	}
 
-	var skipServerCertCheck = true
+	var skipCertCheck = true
 	var err error
 
-	if *prometheusSkipServerCertCheck != "" {
-		if skipServerCertCheck, err = strconv.ParseBool(*prometheusSkipServerCertCheck); err != nil {
+	if *skipServerCertCheck != "" {
+		if skipCertCheck, err = strconv.ParseBool(*skipServerCertCheck); err != nil {
 			log.Fatal("prometheus-to-cloudwatch: Error: ", err)
 		}
 	}
@@ -54,9 +54,9 @@ func main() {
 		CloudWatchNamespace:           *cloudWatchNamespace,
 		CloudWatchRegion:              *cloudWatchRegion,
 		PrometheusScrapeUrl:           *prometheusScrapeUrl,
-		PrometheusCertPath:            *prometheusCertPath,
-		PrometheusKeyPath:             *prometheusKeyPath,
-		PrometheusSkipServerCertCheck: skipServerCertCheck,
+		PrometheusCertPath:            *certPath,
+		PrometheusKeyPath:             *keyPath,
+		PrometheusSkipServerCertCheck: skipCertCheck,
 	}
 
 	if *prometheusScrapeInterval != "" {
