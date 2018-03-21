@@ -52,9 +52,9 @@ export CLOUDWATCH_REGION=us-east-1
 export CLOUDWATCH_PUBLISH_TIMEOUT=5
 export PROMETHEUS_SCRAPE_INTERVAL=30
 export PROMETHEUS_SCRAPE_URL=http://xxxxxxxxxxxx:8080/metrics
-export PROMETHEUS_CERT_PATH=""
-export PROMETHEUS_KEY_PATH=""
-export PROMETHEUS_ACCEPT_INVALID_CERT=true
+export CERT_PATH=""
+export KEY_PATH=""
+export ACCEPT_INVALID_CERT=true
 
 ./dist/bin/prometheus-to-cloudwatch
 ```
@@ -80,9 +80,9 @@ docker run -i --rm \
         -e CLOUDWATCH_PUBLISH_TIMEOUT=5 \
         -e PROMETHEUS_SCRAPE_INTERVAL=30 \
         -e PROMETHEUS_SCRAPE_URL=http://xxxxxxxxxxxx:8080/metrics \
-        -e PROMETHEUS_CERT_PATH="" \
-        -e PROMETHEUS_KEY_PATH="" \
-        -e PROMETHEUS_ACCEPT_INVALID_CERT=true \
+        -e CERT_PATH="" \
+        -e KEY_PATH="" \
+        -e ACCEPT_INVALID_CERT=true \
         prometheus-to-cloudwatch
 ```
 
