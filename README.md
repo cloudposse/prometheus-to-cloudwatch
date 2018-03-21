@@ -93,7 +93,7 @@ To run on `Kubernetes`, we will deploy two [`Helm`](https://helm.sh/) [charts](h
 
 1. [kube-state-metrics](https://github.com/kubernetes/charts/tree/master/stable/kube-state-metrics) - to generates metrics about the state of various objects inside the cluster, such as deployments, nodes and pods
 
-2. [prometheus-to-cloudwatch](chart/prometheus-to-cloudwatch) - to scrape metrics from `kube-state-metrics` and publish them to CloudWatch
+2. [prometheus-to-cloudwatch](chart) - to scrape metrics from `kube-state-metrics` and publish them to CloudWatch
 
 Install `kube-state-metrics` chart
 
@@ -110,7 +110,7 @@ kubectl get services
 ![kube-state-metrics-service](images/kube-state-metrics-service.png)
 
 
-Copy the name of the `kube-state-metrics` service (`gauche-turtle-kube-state-metrics`) into the ENV var `PROMETHEUS_SCRAPE_URL` in [values.yaml](chart/prometheus-to-cloudwatch/values.yaml).
+Copy the name of the `kube-state-metrics` service (`gauche-turtle-kube-state-metrics`) into the ENV var `PROMETHEUS_SCRAPE_URL` in [values.yaml](chart/values.yaml).
 It should look like this:
 
 ```sh
@@ -121,7 +121,7 @@ Deploy `prometheus-to-cloudwatch` chart
 
 ```sh
 cd chart
-helm install ./prometheus-to-cloudwatch
+helm install .
 ```
 
 `prometheus-to-cloudwatch` will start scraping the `/metrics` endpoint of the `kube-state-metrics` service and send the Prometheus metrics to CloudWatch
