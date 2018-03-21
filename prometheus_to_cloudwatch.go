@@ -94,7 +94,7 @@ func NewBridge(c *Config) (*Bridge, error) {
 	if c.CloudWatchPublishInterval > 0 {
 		b.cloudWatchPublishInterval = c.CloudWatchPublishInterval
 	} else {
-		b.cloudWatchPublishInterval = 15 * time.Second
+		b.cloudWatchPublishInterval = 30 * time.Second
 	}
 
 	var client = http.DefaultClient
@@ -102,15 +102,22 @@ func NewBridge(c *Config) (*Bridge, error) {
 	if c.CloudWatchPublishTimeout > 0 {
 		client.Timeout = c.CloudWatchPublishTimeout
 	} else {
-		client.Timeout = 3 * time.Second
+		client.Timeout = 5 * time.Second
 	}
 
 	if c.CloudWatchRegion == "" {
 		return nil, errors.New("CloudWatchRegion required")
 	}
 
+	config := aws.NewConfig().WithHTTPClient(client).WithRegion(c.CloudWatchRegion)
+
 	// https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html
-	config := aws.NewConfig().WithHTTPClient(client).WithRegion(c.CloudWatchRegion).WithCredentials(credentials.NewStaticCredentials(c.AwsAccessKeyId, c.AwsSecretAccessKey, ""))
+	// https://docs.aws.amazon.com/sdk-for-go/api/aws/#Config
+	// If credentials are not provided in the variables, the chain of credential providers will search for credentials
+	// in environment variables, the shared credential file, and EC2 Instance Roles
+	if c.AwsAccessKeyId != "" && c.AwsSecretAccessKey != "" {
+		config.Credentials = credentials.NewStaticCredentials(c.AwsAccessKeyId, c.AwsSecretAccessKey, "")
+	}
 
 	sess, err := session.NewSession(config)
 	if err != nil {
@@ -332,8 +339,8 @@ func parseResponse(resp *http.Response, ch chan<- *dto.MetricFamily) {
 			ch <- mf
 		}
 	} else {
-		// We could do further content-type checks here, but the
-		// fallback for now will anyway be the text format version 0.0.4.
+		// We could do further with content-type checks here,
+		// but the fallback for now will anyway be the text format.
 		var parser expfmt.TextParser
 		metricFamilies, err := parser.TextToMetricFamilies(resp.Body)
 		if err != nil {

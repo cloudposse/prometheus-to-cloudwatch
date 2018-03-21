@@ -26,14 +26,6 @@ var (
 func main() {
 	flag.Parse()
 
-	if *awsAccessKeyId == "" {
-		flag.PrintDefaults()
-		log.Fatal("prometheus-to-cloudwatch: Error: -aws_access_key_id or AWS_ACCESS_KEY_ID required")
-	}
-	if *awsSecretAccessKey == "" {
-		flag.PrintDefaults()
-		log.Fatal("prometheus-to-cloudwatch: Error: -aws_secret_access_key or AWS_SECRET_ACCESS_KEY required")
-	}
 	if *cloudWatchNamespace == "" {
 		flag.PrintDefaults()
 		log.Fatal("prometheus-to-cloudwatch: Error: -cloudwatch_namespace or CLOUDWATCH_NAMESPACE required")

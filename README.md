@@ -23,6 +23,13 @@ Command-line arguments take precedence over ENV vars
 | accept_invalid_cert          | ACCEPT_INVALID_CERT          | Accept any certificate during TLS handshake. Insecure, use only for testing   |
 
 
+__NOTE__: If AWS credentials are not provided in the command-line arguments (`aws_access_key_id` and `aws_secret_access_key`)
+or ENV variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`),
+the chain of credential providers will search for credentials in the shared credential file and EC2 Instance Roles.
+This is useful when deploying the module in AWS on Kubernetes with [`kube2iam`](https://github.com/jtblin/kube2iam),
+which will provide IAM credentials to containers running inside a Kubernetes cluster, allowing the module to assume an IAM Role with permissions
+to publish metrics to CloudWatch.
+
 
 ## Help
 
