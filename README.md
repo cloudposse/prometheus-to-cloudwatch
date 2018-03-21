@@ -17,7 +17,7 @@ Command-line arguments take precedence over ENV vars
 | cloudwatch_region            | CLOUDWATCH_REGION            | CloudWatch AWS Region                                                         |
 | cloudwatch_publish_timeout   | CLOUDWATCH_PUBLISH_TIMEOUT   | CloudWatch publish timeout in seconds                                         |
 | prometheus_scrape_interval   | PROMETHEUS_SCRAPE_INTERVAL   | Prometheus scrape interval in seconds                                         |
-| prometheus_scrape_url        | PROMETHEUS_SCRAPE_URL        | Prometheus scrape URL                                                         |
+| prometheus_scrape_url        | PROMETHEUS_SCRAPE_URL        | The URL to scrape Prometheus metrics from                                     |
 | cert_path                    | CERT_PATH                    | Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)     |
 | keyPath                      | KEY_PATH                     | Path to Key file (when using SSL for `prometheus_scrape_url`)                 |
 | accept_invalid_cert          | ACCEPT_INVALID_CERT          | Accept any certificate during TLS handshake. Insecure, use only for testing   |
@@ -29,6 +29,105 @@ the chain of credential providers will search for credentials in the shared cred
 This is useful when deploying the module in AWS on Kubernetes with [`kube2iam`](https://github.com/jtblin/kube2iam),
 which will provide IAM credentials to containers running inside a Kubernetes cluster, allowing the module to assume an IAM Role with permissions
 to publish metrics to CloudWatch.
+
+
+## Examples
+
+### Build Go program
+
+```sh
+go get
+
+CGO_ENABLED=0 go build -v -o "./dist/bin/prometheus-to-cloudwatch" *.go
+```
+
+
+### Run locally
+
+```sh
+export AWS_ACCESS_KEY_ID=XXXXXXXXXXXXXXXXXXXXXXX
+export AWS_SECRET_ACCESS_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+export CLOUDWATCH_NAMESPACE=kube-state-metrics
+export CLOUDWATCH_REGION=us-east-1
+export CLOUDWATCH_PUBLISH_TIMEOUT=5
+export PROMETHEUS_SCRAPE_INTERVAL=30
+export PROMETHEUS_SCRAPE_URL=http://xxxxxxxxxxxx:8080/metrics
+export PROMETHEUS_CERT_PATH=""
+export PROMETHEUS_KEY_PATH=""
+export PROMETHEUS_ACCEPT_INVALID_CERT=true
+
+./dist/bin/prometheus-to-cloudwatch
+```
+
+
+### Build Docker image
+__NOTE__: it will download all `Go` dependencies and then build the program inside the container (see [`Dockerfile`](Dockerfile))
+
+
+```sh
+docker build --tag prometheus-to-cloudwatch  --no-cache=true .
+```
+
+
+### Run in a Docker container
+
+```sh
+docker run -i --rm \
+        -e AWS_ACCESS_KEY_ID=XXXXXXXXXXXXXXXXXXXXXXX \
+        -e AWS_SECRET_ACCESS_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX \
+        -e CLOUDWATCH_NAMESPACE=kube-state-metrics \
+        -e CLOUDWATCH_REGION=us-east-1 \
+        -e CLOUDWATCH_PUBLISH_TIMEOUT=5 \
+        -e PROMETHEUS_SCRAPE_INTERVAL=30 \
+        -e PROMETHEUS_SCRAPE_URL=http://xxxxxxxxxxxx:8080/metrics \
+        -e PROMETHEUS_CERT_PATH="" \
+        -e PROMETHEUS_KEY_PATH="" \
+        -e PROMETHEUS_ACCEPT_INVALID_CERT=true \
+        prometheus-to-cloudwatch
+```
+
+
+### Run on Kubernetes
+
+To run on `Kubernetes`, we will deploy two [`Helm`](https://helm.sh/) [charts](https://docs.helm.sh/developing_charts/)
+
+1. [kube-state-metrics](https://github.com/kubernetes/charts/tree/master/stable/kube-state-metrics) - to generates metrics about the state of various objects inside the cluster, such as deployments, nodes and pods
+
+2. [prometheus-to-cloudwatch](chart/prometheus-to-cloudwatch) - to scrape metrics from `kube-state-metrics` and publish them to CloudWatch
+
+Install `kube-state-metrics` Chart
+
+```sh
+helm install stable/kube-state-metrics
+```
+
+Find the running services
+
+```sh
+kubectl get services
+```
+
+![kube-state-metrics-service](images/kube-state-metrics-service.png)
+
+
+Copy the name of the `kube-state-metrics` service (`gauche-turtle-kube-state-metrics`) into the ENV var `PROMETHEUS_SCRAPE_URL` in [values.yaml](chart/prometheus-to-cloudwatch/values.yaml).
+It should look like this:
+
+```sh
+PROMETHEUS_SCRAPE_URL: "http://gauche-turtle-kube-state-metrics:8080/metrics"
+```
+
+Deploy `prometheus-to-cloudwatch` Chart
+
+```sh
+cd chart
+helm install ./prometheus-to-cloudwatch
+```
+
+`prometheus-to-cloudwatch` will start scraping the `/metrics` endpoint of the `kube-state-metrics` service and send the Prometheus metrics to CloudWatch
+
+
+![kube-state-metrics-to-cloudwatch](images/kube-state-metrics-to-cloudwatch.png)
 
 
 ## Help
