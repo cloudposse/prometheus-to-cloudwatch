@@ -1,0 +1,20 @@
+Make sure to define the following settings in `values.yaml`:
+
+env:
+  - CLOUDWATCH_NAMESPACE
+  - CLOUDWATCH_REGION
+  - CLOUDWATCH_PUBLISH_TIMEOUT
+  - PROMETHEUS_SCRAPE_INTERVAL
+  - PROMETHEUS_SCRAPE_URL
+  - PROMETHEUS_CERT_PATH
+  - PROMETHEUS_KEY_PATH
+  - PROMETHEUS_ACCEPT_INVALID_CERT
+
+secrets:
+  - AWS_ACCESS_KEY_ID
+  - AWS_SECRET_ACCESS_KEY
+
+
+If you deploying the module in AWS on Kubernetes with `kube2iam` to assume an IAM Role with permissions
+to publish metrics to CloudWatch, don't provide the AWS credentials in 'secrets'.
+The chain of credential providers will search for credentials in EC2 Instance Roles.
