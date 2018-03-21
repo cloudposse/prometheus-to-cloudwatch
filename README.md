@@ -1,6 +1,6 @@
 # prometheus-to-cloudwatch [![Build Status](https://travis-ci.org/cloudposse/prometheus-to-cloudwatch.svg?branch=master)](https://travis-ci.org/cloudposse/prometheus-to-cloudwatch)
 
-Utility for scraping Prometheus metrics from a Prometheus client endpoint and publish them to CloudWatch.
+Utility for scraping Prometheus metrics from a Prometheus client endpoint and publishing them to CloudWatch
 
 
 ## Usage
