@@ -128,8 +128,7 @@ func NewBridge(c *Config) (*Bridge, error) {
 	return b, nil
 }
 
-// Run starts a loop that will push metrics to Cloudwatch at the
-// configured interval. Accepts a context.Context to support cancellation
+// Run starts a loop that will push metrics to Cloudwatch at the configured interval. Accepts a context.Context to support cancellation
 func (b *Bridge) Run(ctx context.Context) {
 	ticker := time.NewTicker(b.cloudWatchPublishInterval)
 	defer ticker.Stop()
@@ -322,7 +321,7 @@ func decodeContent(client *http.Client, url string, ch chan<- *dto.MetricFamily)
 	parseResponse(resp, ch)
 }
 
-// parseResponse consumes an http.Response and pushes it to the MetricFamily channel.
+// parseResponse consumes an http.Response and pushes it to the channel.
 // It returns when all all MetricFamilies are parsed and put on the channel.
 func parseResponse(resp *http.Response, ch chan<- *dto.MetricFamily) {
 	mediaType, params, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
@@ -339,8 +338,6 @@ func parseResponse(resp *http.Response, ch chan<- *dto.MetricFamily) {
 			ch <- mf
 		}
 	} else {
-		// We could do further with content-type checks here,
-		// but the fallback for now will anyway be the text format.
 		var parser expfmt.TextParser
 		metricFamilies, err := parser.TextToMetricFamilies(resp.Body)
 		if err != nil {
