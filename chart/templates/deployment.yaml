@@ -1,25 +1,22 @@
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
-  name: {{ template "prometheus-to-cloudwatch.fullname" . }}
+  name: {{ include "common.fullname" . }}
   labels:
-    app: {{ template "prometheus-to-cloudwatch.name" . }}
-    chart: {{ template "prometheus-to-cloudwatch.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+{{ include "common.labels.standard" . | indent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ template "prometheus-to-cloudwatch.name" . }}
-      release: {{ .Release.Name }}
+      app: {{ template "common.name" . }}
+      release: {{ .Release.Name | quote }}
   strategy:
     type: RollingUpdate
   template:
     metadata:
       labels:
-        app: {{ template "prometheus-to-cloudwatch.name" . }}
-        release: {{ .Release.Name }}
+        app: {{ template "common.name" . }}
+        release: {{ .Release.Name | quote }}
 {{- if .Values.annotations }}
       annotations:
 {{ toYaml .Values.annotations | indent 8 }}
@@ -36,7 +33,7 @@ spec:
               value: {{ $value | quote }}
 {{- end }}
 {{- end }}
-{{- $secret_name := include "prometheus-to-cloudwatch.fullname" . }}
+{{- $secret_name := include "common.fullname" . }}
 {{- range $name, $value := .Values.secrets }}
 {{- if not ( empty $value) }}
             - name: {{ $name | quote }}
