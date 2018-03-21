@@ -95,7 +95,7 @@ To run on `Kubernetes`, we will deploy two [`Helm`](https://helm.sh/) [charts](h
 
 2. [prometheus-to-cloudwatch](chart/prometheus-to-cloudwatch) - to scrape metrics from `kube-state-metrics` and publish them to CloudWatch
 
-Install `kube-state-metrics` Chart
+Install `kube-state-metrics` chart
 
 ```sh
 helm install stable/kube-state-metrics
@@ -117,7 +117,7 @@ It should look like this:
 PROMETHEUS_SCRAPE_URL: "http://gauche-turtle-kube-state-metrics:8080/metrics"
 ```
 
-Deploy `prometheus-to-cloudwatch` Chart
+Deploy `prometheus-to-cloudwatch` chart
 
 ```sh
 cd chart
