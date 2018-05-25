@@ -60,7 +60,7 @@ type Config struct {
 	// Accept any certificate during TLS handshake. Insecure, use only for testing
 	PrometheusSkipServerCertCheck bool
 
-	// Additional dimensions to send cloudwatch
+	// Additional dimensions to send to CloudWatch
 	AdditionalDimensions map[string]string
 }
 
