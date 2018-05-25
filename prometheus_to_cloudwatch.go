@@ -59,6 +59,9 @@ type Config struct {
 
 	// Accept any certificate during TLS handshake. Insecure, use only for testing
 	PrometheusSkipServerCertCheck bool
+
+	// Additional dimensions to send to CloudWatch
+	AdditionalDimensions map[string]string
 }
 
 // Bridge pushes metrics to AWS CloudWatch
@@ -70,6 +73,7 @@ type Bridge struct {
 	prometheusCertPath            string
 	prometheusKeyPath             string
 	prometheusSkipServerCertCheck bool
+	additionalDimensions          map[string]string
 }
 
 // NewBridge initializes and returns a pointer to a Bridge using the
@@ -90,6 +94,7 @@ func NewBridge(c *Config) (*Bridge, error) {
 	b.prometheusCertPath = c.PrometheusCertPath
 	b.prometheusKeyPath = c.PrometheusKeyPath
 	b.prometheusSkipServerCertCheck = c.PrometheusSkipServerCertCheck
+	b.additionalDimensions = c.AdditionalDimensions
 
 	if c.CloudWatchPublishInterval > 0 {
 		b.cloudWatchPublishInterval = c.CloudWatchPublishInterval
@@ -174,7 +179,7 @@ func (b *Bridge) publishMetricsToCloudWatch(mfs []*dto.MetricFamily) error {
 
 	for _, s := range vec {
 		name := getName(s.Metric)
-		data = appendDatum(data, name, s)
+		data = appendDatum(data, name, s, b)
 
 		if len(data) == batchSize {
 			if err := b.flush(data); err != nil {
@@ -199,7 +204,7 @@ func (b *Bridge) flush(data []*cloudwatch.MetricDatum) error {
 	return nil
 }
 
-func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample) []*cloudwatch.MetricDatum {
+func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample, b *Bridge) []*cloudwatch.MetricDatum {
 	metric := s.Metric
 
 	if len(metric) == 0 {
@@ -211,7 +216,7 @@ func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample) [
 	d.SetMetricName(name).
 		SetValue(float64(s.Value)).
 		SetTimestamp(s.Timestamp.Time()).
-		SetDimensions(getDimensions(metric)).
+		SetDimensions(append(getDimensions(metric, 10-len(b.additionalDimensions)), getAdditionalDimensions(b)...)).
 		SetStorageResolution(getResolution(metric)).
 		SetUnit(getUnit(metric))
 
@@ -227,7 +232,7 @@ func getName(m model.Metric) string {
 
 // getDimensions returns up to 10 dimensions for the provided metric - one for each label (except the __name__ label)
 // If a metric has more than 10 labels, it attempts to behave deterministically and returning the first 10 labels as dimensions
-func getDimensions(m model.Metric) []*cloudwatch.Dimension {
+func getDimensions(m model.Metric, num int) []*cloudwatch.Dimension {
 	if len(m) == 0 {
 		return make([]*cloudwatch.Dimension, 0)
 	} else if _, ok := m[model.MetricNameLabel]; len(m) == 1 && ok {
@@ -253,10 +258,18 @@ func getDimensions(m model.Metric) []*cloudwatch.Dimension {
 		}
 	}
 
-	if len(dims) > 10 {
-		dims = dims[:10]
+	if len(dims) > num {
+		dims = dims[:num]
 	}
 
+	return dims
+}
+
+func getAdditionalDimensions(b *Bridge) []*cloudwatch.Dimension {
+	dims := make([]*cloudwatch.Dimension, 0, len(b.additionalDimensions))
+	for k, v := range b.additionalDimensions {
+		dims = append(dims, new(cloudwatch.Dimension).SetName(k).SetValue(v))
+	}
 	return dims
 }
 

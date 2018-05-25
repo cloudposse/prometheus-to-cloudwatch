@@ -21,6 +21,7 @@ Command-line arguments take precedence over ENV vars
 | cert_path                    | CERT_PATH                    | Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)     |
 | keyPath                      | KEY_PATH                     | Path to Key file (when using SSL for `prometheus_scrape_url`)                 |
 | accept_invalid_cert          | ACCEPT_INVALID_CERT          | Accept any certificate during TLS handshake. Insecure, use only for testing   |
+| additional_dimension         | ADDITIONAL_DIMENSION         | Additional dimension specified by NAME=VALUE                                  |
 
 
 __NOTE__: If AWS credentials are not provided in the command-line arguments (`aws_access_key_id` and `aws_secret_access_key`)
