@@ -1,0 +1,184 @@
+# Name of this project
+name: prometheus-to-cloudwatch
+
+# License of this project
+license: APACHE2
+
+# Canonical GitHub repo
+github_repo: cloudposse/prometheus-to-cloudwatch
+
+# Logo for this project
+#logo: docs/logo.png
+
+# Badges to display
+badges:
+  - name: "Build Status"
+    image: "https://travis-ci.org/cloudposse/prometheus-to-cloudwatch.svg?branch=master"
+    url: "https://travis-ci.org/cloudposse/prometheus-to-cloudwatch"
+  - name: "Latest Release"
+    image: "https://img.shields.io/github/release/cloudposse/prometheus-to-cloudwatch.svg"
+    url: "https://github.com/cloudposse/prometheus-to-cloudwatch/releases/latest"
+  - name: "Slack Community"
+    image: "https://slack.cloudposse.com/badge.svg"
+    url: "https://slack.cloudposse.com"
+
+related:
+
+  - name: "Prometheus Operator"
+    description: "Prometheus Operator creates/configures/manages Prometheus clusters atop Kubernetes"
+    url: "https://github.com/cloudposse/prometheus-operator"
+
+  - name: "terraform-aws-cloudwatch-logs"
+    description: "Terraform Module to Provide a CloudWatch Logs Endpoint"
+    url: "https://github.com/cloudposse/terraform-aws-cloudwatch-logs"
+
+  - name: "terraform-aws-ecs-web-app"
+    description: "Terraform module that implements a web app on ECS and supports autoscaling, CI/CD, monitoring, ALB integration, and much more."
+    url: "https://github.com/cloudposse/terraform-aws-ecs-web-app"
+
+description: |-
+
+  Utility for scraping Prometheus metrics from a Prometheus client endpoint and publishing them to CloudWatch
+
+usage: |-
+
+  __NOTE__: The module accepts parameters as command-line arguments or as ENV variables (or any combination of command-line arguments and ENV vars).
+  Command-line arguments take precedence over ENV vars
+
+
+  | Command-line argument        |  ENV var                     |  Description                                                                  |
+  |:-----------------------------|:-----------------------------|:------------------------------------------------------------------------------|
+  | aws_access_key_id            | AWS_ACCESS_KEY_ID            | AWS access key Id with permissions to publish CloudWatch metrics              |
+  | aws_secret_access_key        | AWS_SECRET_ACCESS_KEY        | AWS secret access key with permissions to publish CloudWatch metrics          |
+  | cloudwatch_namespace         | CLOUDWATCH_NAMESPACE         | CloudWatch Namespace                                                          |
+  | cloudwatch_region            | CLOUDWATCH_REGION            | CloudWatch AWS Region                                                         |
+  | cloudwatch_publish_timeout   | CLOUDWATCH_PUBLISH_TIMEOUT   | CloudWatch publish timeout in seconds                                         |
+  | prometheus_scrape_interval   | PROMETHEUS_SCRAPE_INTERVAL   | Prometheus scrape interval in seconds                                         |
+  | prometheus_scrape_url        | PROMETHEUS_SCRAPE_URL        | The URL to scrape Prometheus metrics from                                     |
+  | cert_path                    | CERT_PATH                    | Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)     |
+  | keyPath                      | KEY_PATH                     | Path to Key file (when using SSL for `prometheus_scrape_url`)                 |
+  | accept_invalid_cert          | ACCEPT_INVALID_CERT          | Accept any certificate during TLS handshake. Insecure, use only for testing   |
+  | additional_dimension         | ADDITIONAL_DIMENSION         | Additional dimension specified by NAME=VALUE                                  |
+
+
+  __NOTE__: If AWS credentials are not provided in the command-line arguments (`aws_access_key_id` and `aws_secret_access_key`)
+  or ENV variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`),
+  the chain of credential providers will search for credentials in the shared credential file and EC2 Instance Roles.
+  This is useful when deploying the module in AWS on Kubernetes with [`kube2iam`](https://github.com/jtblin/kube2iam),
+  which will provide IAM credentials to containers running inside a Kubernetes cluster, allowing the module to assume an IAM Role with permissions
+  to publish metrics to CloudWatch.
+
+examples: |-
+  ### Build Go program
+  ```sh
+  go get
+
+  CGO_ENABLED=0 go build -v -o "./dist/bin/prometheus-to-cloudwatch" *.go
+  ```
+
+
+  ### Run locally
+
+  ```sh
+  export AWS_ACCESS_KEY_ID=XXXXXXXXXXXXXXXXXXXXXXX
+  export AWS_SECRET_ACCESS_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  export CLOUDWATCH_NAMESPACE=kube-state-metrics
+  export CLOUDWATCH_REGION=us-east-1
+  export CLOUDWATCH_PUBLISH_TIMEOUT=5
+  export PROMETHEUS_SCRAPE_INTERVAL=30
+  export PROMETHEUS_SCRAPE_URL=http://xxxxxxxxxxxx:8080/metrics
+  export CERT_PATH=""
+  export KEY_PATH=""
+  export ACCEPT_INVALID_CERT=true
+
+  ./dist/bin/prometheus-to-cloudwatch
+  ```
+
+
+  ### Build Docker image
+  __NOTE__: it will download all `Go` dependencies and then build the program inside the container (see [`Dockerfile`](Dockerfile))
+
+
+  ```sh
+  docker build --tag prometheus-to-cloudwatch  --no-cache=true .
+  ```
+
+
+  ### Run in a Docker container
+
+  ```sh
+  docker run -i --rm \
+          -e AWS_ACCESS_KEY_ID=XXXXXXXXXXXXXXXXXXXXXXX \
+          -e AWS_SECRET_ACCESS_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX \
+          -e CLOUDWATCH_NAMESPACE=kube-state-metrics \
+          -e CLOUDWATCH_REGION=us-east-1 \
+          -e CLOUDWATCH_PUBLISH_TIMEOUT=5 \
+          -e PROMETHEUS_SCRAPE_INTERVAL=30 \
+          -e PROMETHEUS_SCRAPE_URL=http://xxxxxxxxxxxx:8080/metrics \
+          -e CERT_PATH="" \
+          -e KEY_PATH="" \
+          -e ACCEPT_INVALID_CERT=true \
+          prometheus-to-cloudwatch
+  ```
+
+
+  ### Run on Kubernetes
+
+  To run on `Kubernetes`, we will deploy two [`Helm`](https://helm.sh/) [charts](https://docs.helm.sh/developing_charts/)
+
+  1. [kube-state-metrics](https://github.com/kubernetes/charts/tree/master/stable/kube-state-metrics) - to generates metrics about the state of various objects inside the cluster, such as deployments, nodes and pods
+
+  2. [prometheus-to-cloudwatch](chart) - to scrape metrics from `kube-state-metrics` and publish them to CloudWatch
+
+  Install `kube-state-metrics` chart
+
+  ```sh
+  helm install stable/kube-state-metrics
+  ```
+
+  Find the running services
+
+  ```sh
+  kubectl get services
+  ```
+
+  Copy the name of the `kube-state-metrics` service (e.g. `gauche-turtle-kube-state-metrics`) into the ENV var `PROMETHEUS_SCRAPE_URL` in [values.yaml](chart/values.yaml).
+  It should look like this:
+
+  ```sh
+  PROMETHEUS_SCRAPE_URL: "http://gauche-turtle-kube-state-metrics:8080/metrics"
+  ```
+
+  Deploy `prometheus-to-cloudwatch` chart
+
+  ```sh
+  cd chart
+  helm install .
+  ```
+
+  `prometheus-to-cloudwatch` will start scraping the `/metrics` endpoint of the `kube-state-metrics` service and send the Prometheus metrics to CloudWatch
+
+
+  ![kube-state-metrics-to-cloudwatch](images/kube-state-metrics-to-cloudwatch.png)
+
+screenshots:
+
+- name: "kube-state-metrics-service"
+  url: "images/kube-state-metrics-service.png"
+  description: "Kube state metrics"
+
+- name: "kube-state-metrics-to-cloudwatch"
+  url: "images/kube-state-metrics-to-cloudwatch.png"
+  description: "Kube state metrics to cloudwatch"
+
+
+# Contributors to this project
+contributors:
+  - name: "Erik Osterman"
+    github: "osterman"
+  - name: "Andriy Knysh"
+    github: "aknysh"
+  - name: "Igor Rodionov"
+    github: "goruha"
+  - name: "yufukui-m"
+    github: "yufukui-m"
