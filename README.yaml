@@ -143,6 +143,9 @@ examples: |-
   ```
 
   Copy the name of the `kube-state-metrics` service (e.g. `gauche-turtle-kube-state-metrics`) into the ENV var `PROMETHEUS_SCRAPE_URL` in [values.yaml](chart/values.yaml).
+
+  ![kube-state-metrics-service](images/kube-state-metrics-service.png)
+
   It should look like this:
 
   ```sh
@@ -163,13 +166,9 @@ examples: |-
 
 screenshots:
 
-- name: "kube-state-metrics-service"
-  url: "images/kube-state-metrics-service.png"
-  description: "Kube state metrics"
-
 - name: "kube-state-metrics-to-cloudwatch"
   url: "images/kube-state-metrics-to-cloudwatch.png"
-  description: "Kube state metrics to cloudwatch"
+  description: "kube-state-metrics to CloudWatch"
 
 
 # Contributors to this project
