@@ -1,4 +1,4 @@
-# Default values for prometheus-to-cloudwatch
+# Default values for prometheus-to-cloudwatch. Update them per your requirements
 #
 replicaCount: 1
 
@@ -18,8 +18,8 @@ secrets:
 
 image:
   repository: "cloudposse/prometheus-to-cloudwatch"
-  tag: "0.1.0"
-  pullPolicy: "IfNotPresent"
+  tag: "0.1.2"
+  pullPolicy: "Always"
 
 annotations: {}
 

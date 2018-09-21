@@ -35,7 +35,7 @@ related:
   - name: "terraform-aws-ecs-web-app"
     description: "Terraform module that implements a web app on ECS and supports autoscaling, CI/CD, monitoring, ALB integration, and much more."
     url: "https://github.com/cloudposse/terraform-aws-ecs-web-app"
-      
+
 description: |-
 
   Utility for scraping Prometheus metrics from a Prometheus client endpoint and publishing them to CloudWatch
@@ -142,7 +142,7 @@ examples: |-
   kubectl get services
   ```
 
-  Copy the name of the `kube-state-metrics` service (`gauche-turtle-kube-state-metrics`) into the ENV var `PROMETHEUS_SCRAPE_URL` in [values.yaml](chart/values.yaml).
+  Copy the name of the `kube-state-metrics` service (e.g. `gauche-turtle-kube-state-metrics`) into the ENV var `PROMETHEUS_SCRAPE_URL` in [values.yaml](chart/values.yaml).
   It should look like this:
 
   ```sh
@@ -161,21 +161,24 @@ examples: |-
 
   ![kube-state-metrics-to-cloudwatch](images/kube-state-metrics-to-cloudwatch.png)
 
-screenshots: 
+screenshots:
 
 - name: "kube-state-metrics-service"
   url: "images/kube-state-metrics-service.png"
-  description: "Kube state metrics" 
+  description: "Kube state metrics"
 
 - name: "kube-state-metrics-to-cloudwatch"
   url: "images/kube-state-metrics-to-cloudwatch.png"
-  description: "Kube state metrics to cloudwatch" 
+  description: "Kube state metrics to cloudwatch"
 
 
 # Contributors to this project
 contributors:
+  - name: "Erik Osterman"
+    github: "osterman"
   - name: "Andriy Knysh"
     github: "aknysh"
-
+  - name: "Igor Rodionov"
+    github: "goruha"
   - name: "yufukui-m"
-    github: "https://github.com/yufukui-m"
+    github: "yufukui-m"

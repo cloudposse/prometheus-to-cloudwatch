@@ -140,7 +140,7 @@ Find the running services
 kubectl get services
 ```
 
-Copy the name of the `kube-state-metrics` service (`gauche-turtle-kube-state-metrics`) into the ENV var `PROMETHEUS_SCRAPE_URL` in [values.yaml](chart/values.yaml).
+Copy the name of the `kube-state-metrics` service (e.g. `gauche-turtle-kube-state-metrics`) into the ENV var `PROMETHEUS_SCRAPE_URL` in [values.yaml](chart/values.yaml).
 It should look like this:
 
 ```sh
@@ -288,12 +288,16 @@ Check out [our other projects][github], [apply for a job][jobs], or [hire us][hi
 
 ### Contributors
 
-|  [![Andriy Knysh][aknysh_avatar]][aknysh_homepage]<br/>[Andriy Knysh][aknysh_homepage] | [![yufukui-m][https://github.com/yufukui-m_avatar]][https://github.com/yufukui-m_homepage]<br/>[yufukui-m][https://github.com/yufukui-m_homepage] |
-|---|---|
+|  [![Erik Osterman][osterman_avatar]][osterman_homepage]<br/>[Erik Osterman][osterman_homepage] | [![Andriy Knysh][aknysh_avatar]][aknysh_homepage]<br/>[Andriy Knysh][aknysh_homepage] | [![Igor Rodionov][goruha_avatar]][goruha_homepage]<br/>[Igor Rodionov][goruha_homepage] | [![yufukui-m][yufukui-m_avatar]][yufukui-m_homepage]<br/>[yufukui-m][yufukui-m_homepage] |
+|---|---|---|---|
 
+  [osterman_homepage]: https://github.com/osterman
+  [osterman_avatar]: https://github.com/osterman.png?size=150
   [aknysh_homepage]: https://github.com/aknysh
   [aknysh_avatar]: https://github.com/aknysh.png?size=150
-  [https://github.com/yufukui-m_homepage]: https://github.com/https://github.com/yufukui-m
-  [https://github.com/yufukui-m_avatar]: https://github.com/https://github.com/yufukui-m.png?size=150
+  [goruha_homepage]: https://github.com/goruha
+  [goruha_avatar]: https://github.com/goruha.png?size=150
+  [yufukui-m_homepage]: https://github.com/yufukui-m
+  [yufukui-m_avatar]: https://github.com/yufukui-m.png?size=150
 
 
