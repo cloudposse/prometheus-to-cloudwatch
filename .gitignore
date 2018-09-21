@@ -18,4 +18,5 @@
 *.iml
 
 .build-harness
+build-harness
 dist/bin/*
