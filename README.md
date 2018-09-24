@@ -26,10 +26,8 @@ It's 100% Open Source and licensed under the [APACHE2](LICENSE).
 ## Screenshots
 
 
-![kube-state-metrics-service](images/kube-state-metrics-service.png)
-*Kube state metrics*
 ![kube-state-metrics-to-cloudwatch](images/kube-state-metrics-to-cloudwatch.png)
-*Kube state metrics to cloudwatch*
+*kube-state-metrics to CloudWatch*
 
 
 
@@ -141,6 +139,9 @@ kubectl get services
 ```
 
 Copy the name of the `kube-state-metrics` service (e.g. `gauche-turtle-kube-state-metrics`) into the ENV var `PROMETHEUS_SCRAPE_URL` in [values.yaml](chart/values.yaml).
+
+![kube-state-metrics-service](images/kube-state-metrics-service.png)
+
 It should look like this:
 
 ```sh
