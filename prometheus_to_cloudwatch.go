@@ -227,7 +227,8 @@ func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample, b
 		SetUnit(getUnit(metric))
 	data = append(data, datum)
 
-	if replacedDimensions != nil {
+	// Don't add replacement if not configured
+	if replacedDimensions != nil && len(replacedDimensions) > 0 {
 		replacedDimensionDatum := &cloudwatch.MetricDatum{}
 		replacedDimensionDatum.SetMetricName(name).
 			SetValue(float64(s.Value)).
@@ -273,10 +274,13 @@ func getDimensions(m model.Metric, num int, b *Bridge) ([]*cloudwatch.Dimension,
 			val := string(m[model.LabelName(name)])
 			if val != "" {
 				dims = append(dims, new(cloudwatch.Dimension).SetName(name).SetValue(val))
-				if replacement, ok := b.replaceDimensions[name]; ok {
-					replacedDims = append(replacedDims, new(cloudwatch.Dimension).SetName(name).SetValue(replacement))
-				} else {
-					replacedDims = append(replacedDims, new(cloudwatch.Dimension).SetName(name).SetValue(val))
+				// Don't add replacement if not configured
+				if b.replaceDimensions != nil && len(b.replaceDimensions) > 0 {
+					if replacement, ok := b.replaceDimensions[name]; ok {
+						replacedDims = append(replacedDims, new(cloudwatch.Dimension).SetName(name).SetValue(replacement))
+					} else {
+						replacedDims = append(replacedDims, new(cloudwatch.Dimension).SetName(name).SetValue(val))
+					}
 				}
 			}
 		}
