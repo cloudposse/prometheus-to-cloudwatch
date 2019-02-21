@@ -23,6 +23,7 @@ var (
 	keyPath                  = flag.String("key_path", os.Getenv("KEY_PATH"), "Path to Key file (when using SSL for `prometheus_scrape_url`)")
 	skipServerCertCheck      = flag.String("accept_invalid_cert", os.Getenv("ACCEPT_INVALID_CERT"), "Accept any certificate during TLS handshake. Insecure, use only for testing")
 	additionalDimension      = flag.String("additional_dimension", os.Getenv("ADDITIONAL_DIMENSION"), "Additional dimension specified by NAME=VALUE")
+	replaceDimensions        = flag.String("replace_dimensions", os.Getenv("REPLACE_DIMENSIONS"), "replace dimensions specified by NAME=VALUE,...")
 )
 
 func main() {
@@ -63,6 +64,20 @@ func main() {
 		additionalDimensions[kv[0]] = kv[1]
 	}
 
+	var replaceDims = map[string]string{}
+	if *replaceDimensions != "" {
+		kvs := strings.Split(*replaceDimensions, ",")
+		if len(kvs) > 0 {
+			for _, rd := range kvs {
+				kv := strings.SplitN(rd, "=", 2)
+				if len(kv) != 2 {
+					log.Fatal("prometheus-to-cloudwatch: Error: -replaceDimensions must be formated as NAME=VALUE,...")
+				}
+				replaceDims[kv[0]] = kv[1]
+			}
+		}
+	}
+
 	config := &Config{
 		CloudWatchNamespace:           *cloudWatchNamespace,
 		CloudWatchRegion:              *cloudWatchRegion,
@@ -73,6 +88,7 @@ func main() {
 		AwsAccessKeyId:                *awsAccessKeyId,
 		AwsSecretAccessKey:            *awsSecretAccessKey,
 		AdditionalDimensions:          additionalDimensions,
+		ReplaceDimensions:             replaceDims,
 	}
 
 	if *prometheusScrapeInterval != "" {
