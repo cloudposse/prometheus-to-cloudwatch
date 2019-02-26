@@ -62,6 +62,9 @@ type Config struct {
 
 	// Additional dimensions to send to CloudWatch
 	AdditionalDimensions map[string]string
+
+	// Replace dimensions with the provided label. This allows for aggregating metrics across dimensions so we can set CloudWatch Alarms on the metrics
+	ReplaceDimensions map[string]string
 }
 
 // Bridge pushes metrics to AWS CloudWatch
@@ -74,6 +77,7 @@ type Bridge struct {
 	prometheusKeyPath             string
 	prometheusSkipServerCertCheck bool
 	additionalDimensions          map[string]string
+	replaceDimensions             map[string]string
 }
 
 // NewBridge initializes and returns a pointer to a Bridge using the
@@ -95,6 +99,7 @@ func NewBridge(c *Config) (*Bridge, error) {
 	b.prometheusKeyPath = c.PrometheusKeyPath
 	b.prometheusSkipServerCertCheck = c.PrometheusSkipServerCertCheck
 	b.additionalDimensions = c.AdditionalDimensions
+	b.replaceDimensions = c.ReplaceDimensions
 
 	if c.CloudWatchPublishInterval > 0 {
 		b.cloudWatchPublishInterval = c.CloudWatchPublishInterval
@@ -211,16 +216,30 @@ func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample, b
 		return data
 	}
 
-	d := &cloudwatch.MetricDatum{}
+	datum := &cloudwatch.MetricDatum{}
 
-	d.SetMetricName(name).
+	kubeStateDimensions, replacedDimensions := getDimensions(metric, 10-len(b.additionalDimensions), b)
+	datum.SetMetricName(name).
 		SetValue(float64(s.Value)).
 		SetTimestamp(s.Timestamp.Time()).
-		SetDimensions(append(getDimensions(metric, 10-len(b.additionalDimensions)), getAdditionalDimensions(b)...)).
+		SetDimensions(append(kubeStateDimensions, getAdditionalDimensions(b)...)).
 		SetStorageResolution(getResolution(metric)).
 		SetUnit(getUnit(metric))
+	data = append(data, datum)
 
-	return append(data, d)
+	// Don't add replacement if not configured
+	if replacedDimensions != nil && len(replacedDimensions) > 0 {
+		replacedDimensionDatum := &cloudwatch.MetricDatum{}
+		replacedDimensionDatum.SetMetricName(name).
+			SetValue(float64(s.Value)).
+			SetTimestamp(s.Timestamp.Time()).
+			SetDimensions(append(replacedDimensions, getAdditionalDimensions(b)...)).
+			SetStorageResolution(getResolution(metric)).
+			SetUnit(getUnit(metric))
+		data = append(data, replacedDimensionDatum)
+	}
+
+	return data
 }
 
 func getName(m model.Metric) string {
@@ -232,11 +251,11 @@ func getName(m model.Metric) string {
 
 // getDimensions returns up to 10 dimensions for the provided metric - one for each label (except the __name__ label)
 // If a metric has more than 10 labels, it attempts to behave deterministically and returning the first 10 labels as dimensions
-func getDimensions(m model.Metric, num int) []*cloudwatch.Dimension {
+func getDimensions(m model.Metric, num int, b *Bridge) ([]*cloudwatch.Dimension, []*cloudwatch.Dimension) {
 	if len(m) == 0 {
-		return make([]*cloudwatch.Dimension, 0)
+		return make([]*cloudwatch.Dimension, 0), nil
 	} else if _, ok := m[model.MetricNameLabel]; len(m) == 1 && ok {
-		return make([]*cloudwatch.Dimension, 0)
+		return make([]*cloudwatch.Dimension, 0), nil
 	}
 
 	names := make([]string, 0, len(m))
@@ -248,12 +267,21 @@ func getDimensions(m model.Metric, num int) []*cloudwatch.Dimension {
 
 	sort.Strings(names)
 	dims := make([]*cloudwatch.Dimension, 0, len(names))
+	replacedDims := make([]*cloudwatch.Dimension, 0, len(names))
 
 	for _, name := range names {
 		if name != "" {
 			val := string(m[model.LabelName(name)])
 			if val != "" {
 				dims = append(dims, new(cloudwatch.Dimension).SetName(name).SetValue(val))
+				// Don't add replacement if not configured
+				if b.replaceDimensions != nil && len(b.replaceDimensions) > 0 {
+					if replacement, ok := b.replaceDimensions[name]; ok {
+						replacedDims = append(replacedDims, new(cloudwatch.Dimension).SetName(name).SetValue(replacement))
+					} else {
+						replacedDims = append(replacedDims, new(cloudwatch.Dimension).SetName(name).SetValue(val))
+					}
+				}
 			}
 		}
 	}
@@ -262,7 +290,11 @@ func getDimensions(m model.Metric, num int) []*cloudwatch.Dimension {
 		dims = dims[:num]
 	}
 
-	return dims
+	if len(replacedDims) > num {
+		replacedDims = replacedDims[:num]
+	}
+
+	return dims, replacedDims
 }
 
 func getAdditionalDimensions(b *Bridge) []*cloudwatch.Dimension {

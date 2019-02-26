@@ -11,6 +11,7 @@ env:
   CERT_PATH: ""
   KEY_PATH: ""
   ACCEPT_INVALID_CERT: "true"
+  REPLACE_DIMENSIONS: "xxx=yyy,aaa=bbb"
 
 secrets:
   AWS_ACCESS_KEY_ID:
