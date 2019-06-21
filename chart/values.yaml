@@ -12,6 +12,8 @@ env:
   KEY_PATH: ""
   ACCEPT_INVALID_CERT: "true"
   REPLACE_DIMENSIONS: "xxx=yyy,aaa=bbb"
+  INCLUDE_METRICS: ''
+  EXCLUDE_METRICS: ''
 
 secrets:
   AWS_ACCESS_KEY_ID:
@@ -19,7 +21,7 @@ secrets:
 
 image:
   repository: "cloudposse/prometheus-to-cloudwatch"
-  tag: "0.1.2"
+  tag: "0.2.0"
   pullPolicy: "Always"
 
 annotations: {}

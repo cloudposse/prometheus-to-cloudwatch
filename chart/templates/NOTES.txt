@@ -9,6 +9,9 @@ env:
   - CERT_PATH
   - KEY_PATH
   - ACCEPT_INVALID_CERT
+  # Optionally:
+  - INCLUDE_METRICS
+  - EXCLUDE_METRICS
 
 secrets:
   - AWS_ACCESS_KEY_ID

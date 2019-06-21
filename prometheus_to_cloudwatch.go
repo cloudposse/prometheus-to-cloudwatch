@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/gobwas/glob"
 	"github.com/matttproud/golang_protobuf_extensions/pbutil"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -65,6 +66,12 @@ type Config struct {
 
 	// Replace dimensions with the provided label. This allows for aggregating metrics across dimensions so we can set CloudWatch Alarms on the metrics
 	ReplaceDimensions map[string]string
+
+	// Only publish the specified metrics (a list of glob patterns, e.g. ["up", "http_*"])
+	IncludeMetrics []glob.Glob
+
+	// Never publish the specified metrics (a list of glob patterns, e.g. ["tomcat_*"])
+	ExcludeMetrics []glob.Glob
 }
 
 // Bridge pushes metrics to AWS CloudWatch
@@ -78,6 +85,8 @@ type Bridge struct {
 	prometheusSkipServerCertCheck bool
 	additionalDimensions          map[string]string
 	replaceDimensions             map[string]string
+	includeMetrics                []glob.Glob
+	excludeMetrics                []glob.Glob
 }
 
 // NewBridge initializes and returns a pointer to a Bridge using the
@@ -100,6 +109,8 @@ func NewBridge(c *Config) (*Bridge, error) {
 	b.prometheusSkipServerCertCheck = c.PrometheusSkipServerCertCheck
 	b.additionalDimensions = c.AdditionalDimensions
 	b.replaceDimensions = c.ReplaceDimensions
+	b.includeMetrics = c.IncludeMetrics
+	b.excludeMetrics = c.ExcludeMetrics
 
 	if c.CloudWatchPublishInterval > 0 {
 		b.cloudWatchPublishInterval = c.CloudWatchPublishInterval
@@ -155,11 +166,11 @@ func (b *Bridge) Run(ctx context.Context) {
 				metricFamilies = append(metricFamilies, mf)
 			}
 
-			err := b.publishMetricsToCloudWatch(metricFamilies)
+			count, err := b.publishMetricsToCloudWatch(metricFamilies)
 			if err != nil {
 				log.Println("prometheus-to-cloudwatch: error publishing to CloudWatch:", err)
 			} else {
-				log.Println(fmt.Sprintf("prometheus-to-cloudwatch: published %d metrics to CloudWatch", len(metricFamilies)))
+				log.Println(fmt.Sprintf("prometheus-to-cloudwatch: published %d metrics to CloudWatch", count))
 			}
 
 		case <-ctx.Done():
@@ -173,20 +184,24 @@ func (b *Bridge) Run(ctx context.Context) {
 //  - Max 40kb request size
 //	- Single namespace per request
 //	- Max 10 dimensions per metric
-func (b *Bridge) publishMetricsToCloudWatch(mfs []*dto.MetricFamily) error {
+func (b *Bridge) publishMetricsToCloudWatch(mfs []*dto.MetricFamily) (count int, e error) {
 	vec, err := expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: model.Now()}, mfs...)
 
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	data := make([]*cloudwatch.MetricDatum, 0, batchSize)
 
 	for _, s := range vec {
 		name := getName(s.Metric)
+		if b.shouldIgnoreMetric(name) {
+			continue
+		}
 		data = appendDatum(data, name, s, b)
 
 		if len(data) == batchSize {
+			count += batchSize
 			if err := b.flush(data); err != nil {
 				log.Println("prometheus-to-cloudwatch: error publishing to CloudWatch:", err)
 			}
@@ -194,7 +209,8 @@ func (b *Bridge) publishMetricsToCloudWatch(mfs []*dto.MetricFamily) error {
 		}
 	}
 
-	return b.flush(data)
+	count += len(data)
+	return count, b.flush(data)
 }
 
 func (b *Bridge) flush(data []*cloudwatch.MetricDatum) error {
@@ -207,6 +223,27 @@ func (b *Bridge) flush(data []*cloudwatch.MetricDatum) error {
 		return err
 	}
 	return nil
+}
+
+func (b *Bridge) shouldIgnoreMetric(metricName string) bool {
+	// Blacklist takes priority over the whitelist
+	if anyPatternMatches(b.excludeMetrics, metricName) {
+		return true
+	} else if len(b.includeMetrics) == 0 {
+		return false
+	} else if anyPatternMatches(b.includeMetrics, metricName) {
+		return false
+	}
+	return true
+}
+
+func anyPatternMatches(patterns []glob.Glob, s string) bool {
+	for _, pattern := range patterns {
+		if pattern.Match(s) {
+			return true
+		}
+	}
+	return false
 }
 
 func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample, b *Bridge) []*cloudwatch.MetricDatum {

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/gobwas/glob"
 	"golang.org/x/net/context"
 	"log"
 	"os"
@@ -24,6 +25,8 @@ var (
 	skipServerCertCheck      = flag.String("accept_invalid_cert", os.Getenv("ACCEPT_INVALID_CERT"), "Accept any certificate during TLS handshake. Insecure, use only for testing")
 	additionalDimension      = flag.String("additional_dimension", os.Getenv("ADDITIONAL_DIMENSION"), "Additional dimension specified by NAME=VALUE")
 	replaceDimensions        = flag.String("replace_dimensions", os.Getenv("REPLACE_DIMENSIONS"), "replace dimensions specified by NAME=VALUE,...")
+	includeMetrics           = flag.String("include_metrics", os.Getenv("INCLUDE_METRICS"), "Only publish the specified metrics (comma-separated list of glob patterns, e.g. 'up,http_*')")
+	excludeMetrics           = flag.String("exclude_metrics", os.Getenv("EXCLUDE_METRICS"), "Never publish the specified metrics (comma-separated list of glob patterns, e.g. 'tomcat_*')")
 )
 
 func main() {
@@ -59,7 +62,7 @@ func main() {
 	if *additionalDimension != "" {
 		kv := strings.SplitN(*additionalDimension, "=", 2)
 		if len(kv) != 2 {
-			log.Fatal("prometheus-to-cloudwatch: Error: -additionalDimension must be formated as NAME=VALUE")
+			log.Fatal("prometheus-to-cloudwatch: Error: -additionalDimension must be formatted as NAME=VALUE")
 		}
 		additionalDimensions[kv[0]] = kv[1]
 	}
@@ -71,10 +74,32 @@ func main() {
 			for _, rd := range kvs {
 				kv := strings.SplitN(rd, "=", 2)
 				if len(kv) != 2 {
-					log.Fatal("prometheus-to-cloudwatch: Error: -replaceDimensions must be formated as NAME=VALUE,...")
+					log.Fatal("prometheus-to-cloudwatch: Error: -replaceDimensions must be formatted as NAME=VALUE,...")
 				}
 				replaceDims[kv[0]] = kv[1]
 			}
+		}
+	}
+
+	var includeMetricsList []glob.Glob
+	if *includeMetrics != "" {
+		for _, pattern := range strings.Split(*includeMetrics, ",") {
+			g, err := glob.Compile(pattern)
+			if err != nil {
+				log.Fatal(fmt.Errorf("prometheus-to-cloudwatch: Error: -include_metrics contains invalid glob pattern in '%s': %s", pattern, err))
+			}
+			includeMetricsList = append(includeMetricsList, g)
+		}
+	}
+
+	var excludeMetricsList []glob.Glob
+	if *excludeMetrics != "" {
+		for _, pattern := range strings.Split(*excludeMetrics, ",") {
+			g, err := glob.Compile(pattern)
+			if err != nil {
+				log.Fatal(fmt.Errorf("prometheus-to-cloudwatch: Error: -exclude_metrics contains invalid glob pattern in '%s': %s", pattern, err))
+			}
+			excludeMetricsList = append(excludeMetricsList, g)
 		}
 	}
 
@@ -89,6 +114,8 @@ func main() {
 		AwsSecretAccessKey:            *awsSecretAccessKey,
 		AdditionalDimensions:          additionalDimensions,
 		ReplaceDimensions:             replaceDims,
+		IncludeMetrics:                includeMetricsList,
+		ExcludeMetrics:                excludeMetricsList,
 	}
 
 	if *prometheusScrapeInterval != "" {
