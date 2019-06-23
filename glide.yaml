@@ -1,11 +1,21 @@
 package: github.com/cloudposse/prometheus-to-cloudwatch
 import:
-  - package: github.com/aws/aws-sdk-go/aws
-  - package: github.com/aws/aws-sdk-go/aws/credentials
-  - package: github.com/aws/aws-sdk-go/aws/session
-  - package: github.com/aws/aws-sdk-go/service/cloudwatch
-  - package: golang.org/x/net/context
-  - package: github.com/matttproud/golang_protobuf_extensions/pbutil
-  - package: github.com/prometheus/client_model/go
-  - package: github.com/prometheus/common/expfmt
-  - package: github.com/prometheus/common/model
+  - package: github.com/aws/aws-sdk-go
+    version: ^1.20.6
+    subpackages:
+      - aws
+      - aws/credentials
+      - aws/session
+      - service/cloudwatch
+  - package: github.com/gobwas/glob
+  - package: github.com/matttproud/golang_protobuf_extensions
+    subpackages:
+      - pbutil
+  - package: github.com/prometheus/client_model
+    subpackages:
+      - go
+  - package: github.com/prometheus/common
+    version: ^0.6.0
+    subpackages:
+      - expfmt
+      - model

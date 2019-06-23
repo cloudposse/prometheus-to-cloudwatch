@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"github.com/gobwas/glob"
-	"golang.org/x/net/context"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -140,6 +142,24 @@ func main() {
 		log.Fatal("prometheus-to-cloudwatch: Error: ", err)
 	}
 
-	fmt.Println("prometheus-to-cloudwatch: Starting prometheus-to-cloudwatch bridge")
-	bridge.Run(context.Background())
+	log.Println("prometheus-to-cloudwatch: Starting prometheus-to-cloudwatch bridge")
+
+	ctx := context.Background()
+	// trap Ctrl+C and call cancel on the context
+	ctx, cancel := context.WithCancel(ctx)
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	defer func() {
+		signal.Stop(signals)
+		cancel()
+	}()
+	go func() {
+		select {
+		case <-signals:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	bridge.Run(ctx)
 }
