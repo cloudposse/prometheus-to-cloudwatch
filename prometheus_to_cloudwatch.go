@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/gobwas/glob"
@@ -220,10 +223,30 @@ func (b *Bridge) flush(data []*cloudwatch.MetricDatum) error {
 			MetricData: data,
 			Namespace:  &b.cloudWatchNamespace,
 		}
-		_, err := b.cw.PutMetricData(in)
-		return err
+		req, _ := b.cw.PutMetricDataRequest(in)
+		req.Handlers.Build.PushBack(compressPayload)
+		return req.Send()
 	}
 	return nil
+}
+
+// Compresses the payload before sending it to the API.
+// According to the documentation:
+// "Each PutMetricData request is limited to 40 KB in size for HTTP POST requests.
+// You can send a payload compressed by gzip."
+func compressPayload(r *request.Request) {
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	if _, err := io.Copy(zw, r.GetBody()); err != nil {
+		log.Println("prometheus-to-cloudwatch: error compressing HTTP body:", err)
+		return
+	}
+	if err := zw.Close(); err != nil {
+		log.Println("prometheus-to-cloudwatch: error compressing HTTP body:", err)
+		return
+	}
+	r.SetBufferBody(buf.Bytes())
+	r.HTTPRequest.Header.Set("Content-Encoding", "gzip")
 }
 
 func (b *Bridge) shouldIgnoreMetric(metricName string) bool {
