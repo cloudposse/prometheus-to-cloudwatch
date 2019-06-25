@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/common/model"
 	"io"
 	"log"
+	"math"
 	"mime"
 	"net/http"
 	"sort"
@@ -253,11 +254,17 @@ func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample, b
 		return data
 	}
 
+	// Check value before adding the datum
+	value := float64(s.Value)
+	if !validValue(value) {
+		return data
+	}
+
 	datum := &cloudwatch.MetricDatum{}
 
 	kubeStateDimensions, replacedDimensions := getDimensions(metric, 10-len(b.additionalDimensions), b)
 	datum.SetMetricName(name).
-		SetValue(float64(s.Value)).
+		SetValue(value).
 		SetTimestamp(s.Timestamp.Time()).
 		SetDimensions(append(kubeStateDimensions, getAdditionalDimensions(b)...)).
 		SetStorageResolution(getResolution(metric)).
@@ -268,7 +275,7 @@ func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample, b
 	if replacedDimensions != nil && len(replacedDimensions) > 0 {
 		replacedDimensionDatum := &cloudwatch.MetricDatum{}
 		replacedDimensionDatum.SetMetricName(name).
-			SetValue(float64(s.Value)).
+			SetValue(value).
 			SetTimestamp(s.Timestamp.Time()).
 			SetDimensions(append(replacedDimensions, getAdditionalDimensions(b)...)).
 			SetStorageResolution(getResolution(metric)).
@@ -277,6 +284,35 @@ func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample, b
 	}
 
 	return data
+}
+
+var (
+	valueTooSmall = math.Pow(2, -260)
+	valueTooLarge = math.Pow(2, 260)
+)
+
+// According to the documentation:
+// "CloudWatch rejects values that are either too small or too large.
+// Values must be in the range of 8.515920e-109 to 1.174271e+108 (Base 10)
+// or 2e-360 to 2e360 (Base 2).
+// In addition, special values (for example, NaN, +Infinity, -Infinity) are not supported."
+func validValue(v float64) bool {
+	if math.IsInf(v, 0) {
+		return false
+	}
+	if math.IsNaN(v) {
+		return false
+	}
+	// Check for zero first to avoid tripping on "value too small"
+	if v == 0.0 {
+		return true
+	}
+	// Check that a non-zero value is within the range of accepted values
+	a := math.Abs(v)
+	if a <= valueTooSmall || a >= valueTooLarge {
+		return false
+	}
+	return true
 }
 
 func getName(m model.Metric) string {

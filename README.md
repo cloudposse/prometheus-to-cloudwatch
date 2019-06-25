@@ -134,8 +134,8 @@ docker run -i --rm \
         -e CERT_PATH="" \
         -e KEY_PATH="" \
         -e ACCEPT_INVALID_CERT=true \
-        -e INCLUDE_METRICS='' \
-        -e EXCLUDE_METRICS='' \
+        -e INCLUDE_METRICS="" \
+        -e EXCLUDE_METRICS="" \
         prometheus-to-cloudwatch
 ```
 
