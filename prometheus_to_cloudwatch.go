@@ -173,9 +173,9 @@ func (b *Bridge) Run(ctx context.Context) {
 			count, err := b.publishMetricsToCloudWatch(metricFamilies)
 			if err != nil {
 				log.Println("prometheus-to-cloudwatch: error publishing to CloudWatch:", err)
-			} else {
-				log.Println(fmt.Sprintf("prometheus-to-cloudwatch: published %d metrics to CloudWatch", count))
 			}
+
+			log.Println(fmt.Sprintf("prometheus-to-cloudwatch: published %d metrics to CloudWatch", count))
 
 		case <-ctx.Done():
 			log.Println("prometheus-to-cloudwatch: stopping")
