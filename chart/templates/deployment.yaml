@@ -43,7 +43,7 @@ spec:
                   key: {{ $name | quote }}
 {{- end }}
 {{- end }}
-      resources:
+          resources:
 {{ toYaml .Values.resources | indent 12 }}
     {{- with .Values.nodeSelector }}
       nodeSelector:
