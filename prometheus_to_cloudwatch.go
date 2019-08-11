@@ -373,7 +373,9 @@ func getDimensions(m model.Metric, num int, b *Bridge) ([]*cloudwatch.Dimension,
 				// Don't add replacement if not configured
 				if b.replaceDimensions != nil && len(b.replaceDimensions) > 0 {
 					if replacement, ok := b.replaceDimensions[name]; ok {
-						replacedDims = append(replacedDims, new(cloudwatch.Dimension).SetName(name).SetValue(replacement))
+						if len(replacement) > 0 {
+							replacedDims = append(replacedDims, new(cloudwatch.Dimension).SetName(name).SetValue(replacement))
+						}
 					} else {
 						replacedDims = append(replacedDims, new(cloudwatch.Dimension).SetName(name).SetValue(val))
 					}
