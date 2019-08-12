@@ -355,10 +355,10 @@ func getDimensions(m model.Metric, num int, b *Bridge) ([]*cloudwatch.Dimension,
 	}
 
 	names := make([]string, 0, len(m))
-	for k := range m {
-		if !(k == model.MetricNameLabel || k == cwHighResLabel || k == cwUnitLabel) {
-			names = append(names, string(k))
-		}
+	for k, v := range m {
+        	if len(v) > 0 && !(k == model.MetricNameLabel || k == cwHighResLabel || k == cwUnitLabel) {
+	            names = append(names, string(k))
+        	}
 	}
 
 	sort.Strings(names)
