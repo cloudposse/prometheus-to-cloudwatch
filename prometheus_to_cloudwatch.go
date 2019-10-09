@@ -33,6 +33,14 @@ const (
 	acceptHeader   = `application/vnd.google.protobuf;proto=io.prometheus.client.MetricFamily;encoding=delimited;q=0.7,text/plain;version=0.0.4;q=0.3`
 )
 
+type StringSet map[string]bool
+
+// MatcherWithStringSet defines a Glob matcher with a set of associated strings
+type MatcherWithStringSet struct {
+	Matcher glob.Glob
+	Set     StringSet
+}
+
 // Config defines configuration options
 type Config struct {
 	// AWS access key Id with permissions to publish CloudWatch metrics
@@ -76,6 +84,9 @@ type Config struct {
 
 	// Never publish the specified metrics (a list of glob patterns, e.g. ["tomcat_*"])
 	ExcludeMetrics []glob.Glob
+
+	// Exclude certain dimensions from the specified metrics
+	ExcludeDimensionsForMetrics []MatcherWithStringSet
 }
 
 // Bridge pushes metrics to AWS CloudWatch
@@ -91,7 +102,9 @@ type Bridge struct {
 	replaceDimensions             map[string]string
 	includeMetrics                []glob.Glob
 	excludeMetrics                []glob.Glob
+	excludeDimensionsForMetrics   []MatcherWithStringSet
 }
+
 
 // NewBridge initializes and returns a pointer to a Bridge using the
 // supplied configuration, or an error if there is a problem with the configuration
@@ -115,6 +128,7 @@ func NewBridge(c *Config) (*Bridge, error) {
 	b.replaceDimensions = c.ReplaceDimensions
 	b.includeMetrics = c.IncludeMetrics
 	b.excludeMetrics = c.ExcludeMetrics
+	b.excludeDimensionsForMetrics = c.ExcludeDimensionsForMetrics
 
 	if c.CloudWatchPublishInterval > 0 {
 		b.cloudWatchPublishInterval = c.CloudWatchPublishInterval
@@ -261,6 +275,16 @@ func (b *Bridge) shouldIgnoreMetric(metricName string) bool {
 	return true
 }
 
+// getDimensionsToExcludeSetForMetric gets the dimensions blacklist for a metric, or nil if there isn't one
+func (b *Bridge) getDimensionsToExcludeSetForMetric(metricName string) StringSet {
+	for _, matcherWithSet := range b.excludeDimensionsForMetrics {
+		if matcherWithSet.Matcher.Match(metricName) {
+			return matcherWithSet.Set
+		}
+	}
+	return nil
+}
+
 func anyPatternMatches(patterns []glob.Glob, s string) bool {
 	for _, pattern := range patterns {
 		if pattern.Match(s) {
@@ -355,9 +379,12 @@ func getDimensions(m model.Metric, num int, b *Bridge) ([]*cloudwatch.Dimension,
 	}
 
 	names := make([]string, 0, len(m))
-	for k := range m {
-		if !(k == model.MetricNameLabel || k == cwHighResLabel || k == cwUnitLabel) {
-			names = append(names, string(k))
+
+	excludeSet := b.getDimensionsToExcludeSetForMetric(string(m[model.MetricNameLabel]))
+
+	for dimName := range m {
+		if !(dimName == model.MetricNameLabel || dimName == cwHighResLabel || dimName == cwUnitLabel || (excludeSet != nil && excludeSet[string(dimName)])) {
+			names = append(names, string(dimName))
 		}
 	}
 

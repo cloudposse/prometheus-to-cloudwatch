@@ -52,22 +52,23 @@ __NOTE__: The module accepts parameters as command-line arguments or as ENV vari
 Command-line arguments take precedence over ENV vars
 
 
-| Command-line argument        |  ENV var                     |  Description                                                                  |
-|:-----------------------------|:-----------------------------|:------------------------------------------------------------------------------|
-| aws_access_key_id            | AWS_ACCESS_KEY_ID            | AWS access key Id with permissions to publish CloudWatch metrics              |
-| aws_secret_access_key        | AWS_SECRET_ACCESS_KEY        | AWS secret access key with permissions to publish CloudWatch metrics          |
-| cloudwatch_namespace         | CLOUDWATCH_NAMESPACE         | CloudWatch Namespace                                                          |
-| cloudwatch_region            | CLOUDWATCH_REGION            | CloudWatch AWS Region                                                         |
-| cloudwatch_publish_timeout   | CLOUDWATCH_PUBLISH_TIMEOUT   | CloudWatch publish timeout in seconds                                         |
-| prometheus_scrape_interval   | PROMETHEUS_SCRAPE_INTERVAL   | Prometheus scrape interval in seconds                                         |
-| prometheus_scrape_url        | PROMETHEUS_SCRAPE_URL        | The URL to scrape Prometheus metrics from                                     |
-| cert_path                    | CERT_PATH                    | Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)     |
-| keyPath                      | KEY_PATH                     | Path to Key file (when using SSL for `prometheus_scrape_url`)                 |
-| accept_invalid_cert          | ACCEPT_INVALID_CERT          | Accept any certificate during TLS handshake. Insecure, use only for testing   |
-| additional_dimension         | ADDITIONAL_DIMENSION         | Additional dimension specified by NAME=VALUE                                  |
-| replace_dimensions           | REPLACE_DIMENSIONS           | Replace dimensions specified by NAME=VALUE,...                                |
-| include_metrics              | INCLUDE_METRICS              | Only publish the specified metrics (comma-separated list of glob patterns)    |
-| exclude_metrics              | EXCLUDE_METRICS              | Never publish the specified metrics (comma-separated list of glob patterns)   |
+| Command-line argument          | ENV var                        | Description                                                                                                                                                              |
+|--------------------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| aws_access_key_id              | AWS_ACCESS_KEY_ID              | AWS access key Id with permissions to publish CloudWatch metrics                                                                                                         |
+| aws_secret_access_key          | AWS_SECRET_ACCESS_KEY          | AWS secret access key with permissions to publish CloudWatch metrics                                                                                                     |
+| cloudwatch_namespace           | CLOUDWATCH_NAMESPACE           | CloudWatch Namespace                                                                                                                                                     |
+| cloudwatch_region              | CLOUDWATCH_REGION              | CloudWatch AWS Region                                                                                                                                                    |
+| cloudwatch_publish_timeout     | CLOUDWATCH_PUBLISH_TIMEOUT     | CloudWatch publish timeout in seconds                                                                                                                                    |
+| prometheus_scrape_interval     | PROMETHEUS_SCRAPE_INTERVAL     | Prometheus scrape interval in seconds                                                                                                                                    |
+| prometheus_scrape_url          | PROMETHEUS_SCRAPE_URL          | The URL to scrape Prometheus metrics from                                                                                                                                |
+| cert_path                      | CERT_PATH                      | Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)                                                                                                |
+| keyPath                        | KEY_PATH                       | Path to Key file (when using SSL for `prometheus_scrape_url`)                                                                                                            |
+| accept_invalid_cert            | ACCEPT_INVALID_CERT            | Accept any certificate during TLS handshake. Insecure, use only for testing                                                                                              |
+| additional_dimension           | ADDITIONAL_DIMENSION           | Additional dimension specified by NAME=VALUE                                                                                                                             |
+| replace_dimensions             | REPLACE_DIMENSIONS             | Replace dimensions specified by NAME=VALUE,...                                                                                                                           |
+| include_metrics                | INCLUDE_METRICS                | Only publish the specified metrics (comma-separated list of glob patterns)                                                                                               |
+| exclude_metrics                | EXCLUDE_METRICS                | Never publish the specified metrics (comma-separated list of glob patterns)                                                                                              |
+| exclude_dimensions_for_metrics | EXCLUDE_DIMENSIONS_FOR_METRICS | Dimensions to exclude for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job,host;zk_up=host,pod;') |
 
 
 __NOTE__: If AWS credentials are not provided in the command-line arguments (`aws_access_key_id` and `aws_secret_access_key`)
@@ -106,6 +107,7 @@ export ACCEPT_INVALID_CERT=true
 # Optionally, restrict the subset of metrics to be exported to CloudWatch
 # export INCLUDE_METRICS='jvm_*'
 # export EXCLUDE_METRICS='jvm_memory_*,jvm_buffer_*'
+# export EXCLUDE_DIMENSIONS_FOR_METRICS='jvm_memory_*=pod;jvm_buffer=job,pod'
 
 ./dist/bin/prometheus-to-cloudwatch
 ```
@@ -136,6 +138,7 @@ docker run -i --rm \
         -e ACCEPT_INVALID_CERT=true \
         -e INCLUDE_METRICS="" \
         -e EXCLUDE_METRICS="" \
+        -e EXCLUDE_DIMENSIONS_FOR_METRICS="" \
         prometheus-to-cloudwatch
 ```
 
@@ -316,19 +319,21 @@ Check out [our other projects][github], [follow us on twitter][twitter], [apply 
 
 ### Contributors
 
-|  [![Erik Osterman][osterman_avatar]][osterman_homepage]<br/>[Erik Osterman][osterman_homepage] | [![Andriy Knysh][aknysh_avatar]][aknysh_homepage]<br/>[Andriy Knysh][aknysh_homepage] | [![Igor Rodionov][goruha_avatar]][goruha_homepage]<br/>[Igor Rodionov][goruha_homepage] | [![yufukui-m][yufukui-m_avatar]][yufukui-m_homepage]<br/>[yufukui-m][yufukui-m_homepage] | [![Satadru Biswas][sbiswas-suplari_avatar]][sbiswas-suplari_homepage]<br/>[Satadru Biswas][sbiswas-suplari_homepage] |
-|---|---|---|---|---|
+|  [![Erik Osterman][osterman_avatar]][osterman_homepage]<br/>[Erik Osterman][osterman_homepage] | [![Andriy Knysh][aknysh_avatar]][aknysh_homepage]<br/>[Andriy Knysh][aknysh_homepage] | [![Igor Rodionov][goruha_avatar]][goruha_homepage]<br/>[Igor Rodionov][goruha_homepage] | [![yufukui-m][yufukui-m_avatar]][yufukui-m_homepage]<br/>[yufukui-m][yufukui-m_homepage] | [![Satadru Biswas][sbiswas-suplari_avatar]][sbiswas-suplari_homepage]<br/>[Satadru Biswas][sbiswas-suplari_homepage] | [![Austin ce][austince_avatar]][austince_homepage]<br/>[Austin ce][austince_homepage] |
+|---|---|---|---|---|---|
 
   [osterman_homepage]: https://github.com/osterman
-  [osterman_avatar]: https://github.com/osterman.png?size=150
+  [osterman_avatar]: https://img.cloudposse.com/150x150/https://github.com/osterman.png
   [aknysh_homepage]: https://github.com/aknysh
-  [aknysh_avatar]: https://github.com/aknysh.png?size=150
+  [aknysh_avatar]: https://img.cloudposse.com/150x150/https://github.com/aknysh.png
   [goruha_homepage]: https://github.com/goruha
-  [goruha_avatar]: https://github.com/goruha.png?size=150
+  [goruha_avatar]: https://img.cloudposse.com/150x150/https://github.com/goruha.png
   [yufukui-m_homepage]: https://github.com/yufukui-m
-  [yufukui-m_avatar]: https://github.com/yufukui-m.png?size=150
+  [yufukui-m_avatar]: https://img.cloudposse.com/150x150/https://github.com/yufukui-m.png
   [sbiswas-suplari_homepage]: https://github.com/sbiswas-suplari
-  [sbiswas-suplari_avatar]: https://github.com/sbiswas-suplari.png?size=150
+  [sbiswas-suplari_avatar]: https://img.cloudposse.com/150x150/https://github.com/sbiswas-suplari.png
+  [austince_homepage]: https://github.com/austince
+  [austince_avatar]: https://img.cloudposse.com/150x150/https://github.com/austince.png
 
 
 
