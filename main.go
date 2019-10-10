@@ -15,21 +15,43 @@ import (
 )
 
 var (
-	awsAccessKeyId           = flag.String("aws_access_key_id", os.Getenv("AWS_ACCESS_KEY_ID"), "AWS access key Id with permissions to publish CloudWatch metrics")
-	awsSecretAccessKey       = flag.String("aws_secret_access_key", os.Getenv("AWS_SECRET_ACCESS_KEY"), "AWS secret access key with permissions to publish CloudWatch metrics")
-	cloudWatchNamespace      = flag.String("cloudwatch_namespace", os.Getenv("CLOUDWATCH_NAMESPACE"), "CloudWatch Namespace")
-	cloudWatchRegion         = flag.String("cloudwatch_region", os.Getenv("CLOUDWATCH_REGION"), "CloudWatch Region")
-	cloudWatchPublishTimeout = flag.String("cloudwatch_publish_timeout", os.Getenv("CLOUDWATCH_PUBLISH_TIMEOUT"), "CloudWatch publish timeout in seconds")
-	prometheusScrapeInterval = flag.String("prometheus_scrape_interval", os.Getenv("PROMETHEUS_SCRAPE_INTERVAL"), "Prometheus scrape interval in seconds")
-	prometheusScrapeUrl      = flag.String("prometheus_scrape_url", os.Getenv("PROMETHEUS_SCRAPE_URL"), "Prometheus scrape URL")
-	certPath                 = flag.String("cert_path", os.Getenv("CERT_PATH"), "Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)")
-	keyPath                  = flag.String("key_path", os.Getenv("KEY_PATH"), "Path to Key file (when using SSL for `prometheus_scrape_url`)")
-	skipServerCertCheck      = flag.String("accept_invalid_cert", os.Getenv("ACCEPT_INVALID_CERT"), "Accept any certificate during TLS handshake. Insecure, use only for testing")
-	additionalDimension      = flag.String("additional_dimension", os.Getenv("ADDITIONAL_DIMENSION"), "Additional dimension specified by NAME=VALUE")
-	replaceDimensions        = flag.String("replace_dimensions", os.Getenv("REPLACE_DIMENSIONS"), "replace dimensions specified by NAME=VALUE,...")
-	includeMetrics           = flag.String("include_metrics", os.Getenv("INCLUDE_METRICS"), "Only publish the specified metrics (comma-separated list of glob patterns, e.g. 'up,http_*')")
-	excludeMetrics           = flag.String("exclude_metrics", os.Getenv("EXCLUDE_METRICS"), "Never publish the specified metrics (comma-separated list of glob patterns, e.g. 'tomcat_*')")
+	awsAccessKeyId              = flag.String("aws_access_key_id", os.Getenv("AWS_ACCESS_KEY_ID"), "AWS access key Id with permissions to publish CloudWatch metrics")
+	awsSecretAccessKey          = flag.String("aws_secret_access_key", os.Getenv("AWS_SECRET_ACCESS_KEY"), "AWS secret access key with permissions to publish CloudWatch metrics")
+	cloudWatchNamespace         = flag.String("cloudwatch_namespace", os.Getenv("CLOUDWATCH_NAMESPACE"), "CloudWatch Namespace")
+	cloudWatchRegion            = flag.String("cloudwatch_region", os.Getenv("CLOUDWATCH_REGION"), "CloudWatch Region")
+	cloudWatchPublishTimeout    = flag.String("cloudwatch_publish_timeout", os.Getenv("CLOUDWATCH_PUBLISH_TIMEOUT"), "CloudWatch publish timeout in seconds")
+	prometheusScrapeInterval    = flag.String("prometheus_scrape_interval", os.Getenv("PROMETHEUS_SCRAPE_INTERVAL"), "Prometheus scrape interval in seconds")
+	prometheusScrapeUrl         = flag.String("prometheus_scrape_url", os.Getenv("PROMETHEUS_SCRAPE_URL"), "Prometheus scrape URL")
+	certPath                    = flag.String("cert_path", os.Getenv("CERT_PATH"), "Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)")
+	keyPath                     = flag.String("key_path", os.Getenv("KEY_PATH"), "Path to Key file (when using SSL for `prometheus_scrape_url`)")
+	skipServerCertCheck         = flag.String("accept_invalid_cert", os.Getenv("ACCEPT_INVALID_CERT"), "Accept any certificate during TLS handshake. Insecure, use only for testing")
+	additionalDimension         = flag.String("additional_dimension", os.Getenv("ADDITIONAL_DIMENSION"), "Additional dimension specified by NAME=VALUE")
+	replaceDimensions           = flag.String("replace_dimensions", os.Getenv("REPLACE_DIMENSIONS"), "replace dimensions specified by NAME=VALUE,...")
+	includeMetrics              = flag.String("include_metrics", os.Getenv("INCLUDE_METRICS"), "Only publish the specified metrics (comma-separated list of glob patterns, e.g. 'up,http_*')")
+	excludeMetrics              = flag.String("exclude_metrics", os.Getenv("EXCLUDE_METRICS"), "Never publish the specified metrics (comma-separated list of glob patterns, e.g. 'tomcat_*')")
+	excludeDimensionsForMetrics = flag.String("exclude_dimensions_for_metrics", os.Getenv("EXCLUDE_DIMENSIONS_FOR_METRICS"), "Dimensions to exclude for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job,host;zk_up=host,pod;')")
 )
+
+// kevValMustParse takes a string and exits with a message if it cannot parse as KEY=VALUE
+func keyValMustParse(str, message string) (string, string) {
+	kv := strings.SplitN(str, "=", 2)
+	if len(kv) != 2 {
+		log.Fatalf("prometheus-to-cloudwatch: Error: %s", message)
+	}
+	return kv[0], kv[1]
+}
+
+// stringSliceToSet creates a "set" (a boolean map) from a slice of strings
+func stringSliceToSet(slice []string) StringSet {
+	boolMap := make(StringSet, len(slice))
+
+	for i := range slice {
+		boolMap[slice[i]] = true
+	}
+
+	return boolMap
+}
+
 
 func main() {
 	flag.Parse()
@@ -62,11 +84,8 @@ func main() {
 
 	var additionalDimensions = map[string]string{}
 	if *additionalDimension != "" {
-		kv := strings.SplitN(*additionalDimension, "=", 2)
-		if len(kv) != 2 {
-			log.Fatal("prometheus-to-cloudwatch: Error: -additionalDimension must be formatted as NAME=VALUE")
-		}
-		additionalDimensions[kv[0]] = kv[1]
+		key, val := keyValMustParse(*additionalDimension, "-additionalDimension must be formatted as NAME=VALUE")
+		additionalDimensions[key] = val
 	}
 
 	var replaceDims = map[string]string{}
@@ -74,11 +93,8 @@ func main() {
 		kvs := strings.Split(*replaceDimensions, ",")
 		if len(kvs) > 0 {
 			for _, rd := range kvs {
-				kv := strings.SplitN(rd, "=", 2)
-				if len(kv) != 2 {
-					log.Fatal("prometheus-to-cloudwatch: Error: -replaceDimensions must be formatted as NAME=VALUE,...")
-				}
-				replaceDims[kv[0]] = kv[1]
+				key, val := keyValMustParse(rd, "-replaceDimensions must be formatted as NAME=VALUE,...")
+				replaceDims[key] = val
 			}
 		}
 	}
@@ -105,6 +121,34 @@ func main() {
 		}
 	}
 
+	var excludeDimensionsForMetricsList []MatcherWithStringSet
+	if *excludeDimensionsForMetrics != "" {
+		// split metric1=dim1,dim2;metric2=dim1
+		//  into [
+		//      metric1=dim1,dim2
+		//      metric*=dim1
+		// ]
+		// then into [{ Matcher: "metric1": Set: [dim1, dim2] } , { Matcher: "metric_*": Set: [dim1] }]
+		for _, sublist := range strings.Split(*excludeDimensionsForMetrics, ";") {
+			key, val := keyValMustParse(sublist, "-exclude_dimensions_for_metrics must be formatted as METRIC_NAME=DIM_LIST;...")
+
+			metricPattern, err := glob.Compile(key)
+			if err != nil {
+				log.Fatal(fmt.Errorf("prometheus-to-cloudwatch: Error: -exclude_dimensions_for_metrics contains invalid glob pattern in '%s': %s", key, err))
+			}
+
+			dims := strings.Split(val, ",")
+			if len(dims) == 0 {
+				log.Fatalf("prometheus-to-cloudwatch: Error: -exclude_dimensions_for_metrics was not given dimensions to exclude for metric '%s'", key)
+			}
+			g := MatcherWithStringSet{
+				Matcher: metricPattern,
+				Set:     stringSliceToSet(dims),
+			}
+			excludeDimensionsForMetricsList = append(excludeDimensionsForMetricsList, g)
+		}
+	}
+
 	config := &Config{
 		CloudWatchNamespace:           *cloudWatchNamespace,
 		CloudWatchRegion:              *cloudWatchRegion,
@@ -118,6 +162,7 @@ func main() {
 		ReplaceDimensions:             replaceDims,
 		IncludeMetrics:                includeMetricsList,
 		ExcludeMetrics:                excludeMetricsList,
+		ExcludeDimensionsForMetrics:   excludeDimensionsForMetricsList,
 	}
 
 	if *prometheusScrapeInterval != "" {
