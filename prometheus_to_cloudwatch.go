@@ -387,7 +387,7 @@ func shouldIncludeDimension(dimName model.LabelName, includeSet, excludeSet Stri
 	dimNameStr := string(dimName)
 
 	// blacklist first
-	if excludeSet != nil && excludeSet[dimNameStr]{
+	if excludeSet != nil && excludeSet[dimNameStr] {
 		return false
 	}
 	// if no whitelist, keep it
