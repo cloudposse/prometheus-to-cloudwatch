@@ -386,18 +386,16 @@ func shouldIncludeDimension(dimName model.LabelName, includeSet, excludeSet Stri
 
 	dimNameStr := string(dimName)
 
-	// whitelist first
-	if includeSet != nil {
-		return includeSet[dimNameStr]
+	// blacklist first
+	if excludeSet != nil && excludeSet[dimNameStr]{
+		return false
 	}
-
-	// blacklist next
-	if excludeSet != nil {
-		return !excludeSet[dimNameStr]
+	// if no whitelist, keep it
+	if includeSet == nil {
+		return true
 	}
-
-	// otherwise, keep it
-	return true
+	// otherwise, check the whitelist
+	return includeSet[dimNameStr]
 }
 
 // getDimensions returns up to 10 dimensions for the provided metric - one for each label (except the __name__ label)
