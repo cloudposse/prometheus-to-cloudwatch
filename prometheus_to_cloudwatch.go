@@ -379,6 +379,7 @@ func getName(m model.Metric) string {
 }
 
 // shouldIncludeDimension determines whether or not to keep this dimension when publishing to cloudwatch
+// if an `includeSet` is specified, this will only return `true` for dimensions in that set
 func shouldIncludeDimension(dimName model.LabelName, includeSet, excludeSet StringSet) bool {
 	if dimName == model.MetricNameLabel || dimName == cwHighResLabel || dimName == cwUnitLabel {
 		return false
@@ -390,7 +391,7 @@ func shouldIncludeDimension(dimName model.LabelName, includeSet, excludeSet Stri
 	if excludeSet != nil && excludeSet[dimNameStr] {
 		return false
 	}
-	// if no whitelist, keep it
+	// if no whitelist, keep it as it passed the blacklist
 	if includeSet == nil {
 		return true
 	}
