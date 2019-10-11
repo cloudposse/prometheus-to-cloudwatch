@@ -68,7 +68,8 @@ Command-line arguments take precedence over ENV vars
 | replace_dimensions             | REPLACE_DIMENSIONS             | Replace dimensions specified by NAME=VALUE,...                                                                                                                           |
 | include_metrics                | INCLUDE_METRICS                | Only publish the specified metrics (comma-separated list of glob patterns)                                                                                               |
 | exclude_metrics                | EXCLUDE_METRICS                | Never publish the specified metrics (comma-separated list of glob patterns)                                                                                              |
-| exclude_dimensions_for_metrics | EXCLUDE_DIMENSIONS_FOR_METRICS | Dimensions to exclude for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job,host;zk_up=host,pod;') |
+| include_dimensions_for_metrics | INCLUDE_DIMENSIONS_FOR_METRICS | Dimensions to include for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job_id')                   |
+| exclude_dimensions_for_metrics | EXCLUDE_DIMENSIONS_FOR_METRICS | Dimensions to exclude for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job,host;zk_up=host,pod')  |
 
 
 __NOTE__: If AWS credentials are not provided in the command-line arguments (`aws_access_key_id` and `aws_secret_access_key`)
@@ -107,6 +108,7 @@ export ACCEPT_INVALID_CERT=true
 # Optionally, restrict the subset of metrics to be exported to CloudWatch
 # export INCLUDE_METRICS='jvm_*'
 # export EXCLUDE_METRICS='jvm_memory_*,jvm_buffer_*'
+# export INCLUDE_DIMENSIONS_FOR_METRICS='jvm_memory_*=pod_id'
 # export EXCLUDE_DIMENSIONS_FOR_METRICS='jvm_memory_*=pod;jvm_buffer=job,pod'
 
 ./dist/bin/prometheus-to-cloudwatch
@@ -138,6 +140,7 @@ docker run -i --rm \
         -e ACCEPT_INVALID_CERT=true \
         -e INCLUDE_METRICS="" \
         -e EXCLUDE_METRICS="" \
+        -e INCLUDE_DIMENSIONS_FOR_METRICS="" \
         -e EXCLUDE_DIMENSIONS_FOR_METRICS="" \
         prometheus-to-cloudwatch
 ```
