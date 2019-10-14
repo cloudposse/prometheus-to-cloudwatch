@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/gobwas/glob"
 	"log"
 	"os"
 	"os/signal"
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/gobwas/glob"
 )
 
 var (
@@ -29,7 +30,8 @@ var (
 	replaceDimensions           = flag.String("replace_dimensions", os.Getenv("REPLACE_DIMENSIONS"), "replace dimensions specified by NAME=VALUE,...")
 	includeMetrics              = flag.String("include_metrics", os.Getenv("INCLUDE_METRICS"), "Only publish the specified metrics (comma-separated list of glob patterns, e.g. 'up,http_*')")
 	excludeMetrics              = flag.String("exclude_metrics", os.Getenv("EXCLUDE_METRICS"), "Never publish the specified metrics (comma-separated list of glob patterns, e.g. 'tomcat_*')")
-	excludeDimensionsForMetrics = flag.String("exclude_dimensions_for_metrics", os.Getenv("EXCLUDE_DIMENSIONS_FOR_METRICS"), "Dimensions to exclude for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job,host;zk_up=host,pod;')")
+	includeDimensionsForMetrics = flag.String("include_dimensions_for_metrics", os.Getenv("INCLUDE_DIMENSIONS_FOR_METRICS"), "Only publish the specified dimensions for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job_id')")
+	excludeDimensionsForMetrics = flag.String("exclude_dimensions_for_metrics", os.Getenv("EXCLUDE_DIMENSIONS_FOR_METRICS"), "Never publish the specified dimensions for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job,host;zk_up=host,pod;')")
 )
 
 // kevValMustParse takes a string and exits with a message if it cannot parse as KEY=VALUE
@@ -39,6 +41,37 @@ func keyValMustParse(str, message string) (string, string) {
 		log.Fatalf("prometheus-to-cloudwatch: Error: %s", message)
 	}
 	return kv[0], kv[1]
+}
+
+// dimensionMatcherListMustParse takes a string and a flag name and exists with a message
+// if it cannot parse as GLOB=dim1,dim2;GLOB2=dim3
+func dimensionMatcherListMustParse(str, flag string) []MatcherWithStringSet {
+	var matcherList []MatcherWithStringSet
+	// split metric1=dim1,dim2;metric2=dim1
+	//  into [
+	//      metric1=dim1,dim2
+	//      metric*=dim1
+	// ]
+	// then into [{ Matcher: "metric1": Set: [dim1, dim2] } , { Matcher: "metric_*": Set: [dim1] }]
+	for _, sublist := range strings.Split(str, ";") {
+		key, val := keyValMustParse(sublist, fmt.Sprintf("%s must be formatted as METRIC_NAME=DIM_LIST;...", flag))
+
+		metricPattern, err := glob.Compile(key)
+		if err != nil {
+			log.Fatal(fmt.Errorf("prometheus-to-cloudwatch: Error: %s contains invalid glob pattern in '%s': %s", flag, key, err))
+		}
+
+		dims := strings.Split(val, ",")
+		if len(dims) == 0 {
+			log.Fatalf("prometheus-to-cloudwatch: Error: %s was not given dimensions to exclude for metric '%s'", flag, key)
+		}
+		g := MatcherWithStringSet{
+			Matcher: metricPattern,
+			Set:     stringSliceToSet(dims),
+		}
+		matcherList = append(matcherList, g)
+	}
+	return matcherList
 }
 
 // stringSliceToSet creates a "set" (a boolean map) from a slice of strings
@@ -51,7 +84,6 @@ func stringSliceToSet(slice []string) StringSet {
 
 	return boolMap
 }
-
 
 func main() {
 	flag.Parse()
@@ -123,30 +155,12 @@ func main() {
 
 	var excludeDimensionsForMetricsList []MatcherWithStringSet
 	if *excludeDimensionsForMetrics != "" {
-		// split metric1=dim1,dim2;metric2=dim1
-		//  into [
-		//      metric1=dim1,dim2
-		//      metric*=dim1
-		// ]
-		// then into [{ Matcher: "metric1": Set: [dim1, dim2] } , { Matcher: "metric_*": Set: [dim1] }]
-		for _, sublist := range strings.Split(*excludeDimensionsForMetrics, ";") {
-			key, val := keyValMustParse(sublist, "-exclude_dimensions_for_metrics must be formatted as METRIC_NAME=DIM_LIST;...")
+		excludeDimensionsForMetricsList = dimensionMatcherListMustParse(*excludeDimensionsForMetrics, "-exclude_dimensions_for_metrics")
+	}
 
-			metricPattern, err := glob.Compile(key)
-			if err != nil {
-				log.Fatal(fmt.Errorf("prometheus-to-cloudwatch: Error: -exclude_dimensions_for_metrics contains invalid glob pattern in '%s': %s", key, err))
-			}
-
-			dims := strings.Split(val, ",")
-			if len(dims) == 0 {
-				log.Fatalf("prometheus-to-cloudwatch: Error: -exclude_dimensions_for_metrics was not given dimensions to exclude for metric '%s'", key)
-			}
-			g := MatcherWithStringSet{
-				Matcher: metricPattern,
-				Set:     stringSliceToSet(dims),
-			}
-			excludeDimensionsForMetricsList = append(excludeDimensionsForMetricsList, g)
-		}
+	var includeDimensionsForMetricsList []MatcherWithStringSet
+	if *includeDimensionsForMetrics != "" {
+		includeDimensionsForMetricsList = dimensionMatcherListMustParse(*includeDimensionsForMetrics, "-include_dimensions_for_metrics")
 	}
 
 	config := &Config{
@@ -163,6 +177,7 @@ func main() {
 		IncludeMetrics:                includeMetricsList,
 		ExcludeMetrics:                excludeMetricsList,
 		ExcludeDimensionsForMetrics:   excludeDimensionsForMetricsList,
+		IncludeDimensionsForMetrics:   includeDimensionsForMetricsList,
 	}
 
 	if *prometheusScrapeInterval != "" {

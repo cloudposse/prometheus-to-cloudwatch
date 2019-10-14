@@ -52,23 +52,24 @@ __NOTE__: The module accepts parameters as command-line arguments or as ENV vari
 Command-line arguments take precedence over ENV vars
 
 
-| Command-line argument          | ENV var                        | Description                                                                                                                                                              |
-|--------------------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| aws_access_key_id              | AWS_ACCESS_KEY_ID              | AWS access key Id with permissions to publish CloudWatch metrics                                                                                                         |
-| aws_secret_access_key          | AWS_SECRET_ACCESS_KEY          | AWS secret access key with permissions to publish CloudWatch metrics                                                                                                     |
-| cloudwatch_namespace           | CLOUDWATCH_NAMESPACE           | CloudWatch Namespace                                                                                                                                                     |
-| cloudwatch_region              | CLOUDWATCH_REGION              | CloudWatch AWS Region                                                                                                                                                    |
-| cloudwatch_publish_timeout     | CLOUDWATCH_PUBLISH_TIMEOUT     | CloudWatch publish timeout in seconds                                                                                                                                    |
-| prometheus_scrape_interval     | PROMETHEUS_SCRAPE_INTERVAL     | Prometheus scrape interval in seconds                                                                                                                                    |
-| prometheus_scrape_url          | PROMETHEUS_SCRAPE_URL          | The URL to scrape Prometheus metrics from                                                                                                                                |
-| cert_path                      | CERT_PATH                      | Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)                                                                                                |
-| keyPath                        | KEY_PATH                       | Path to Key file (when using SSL for `prometheus_scrape_url`)                                                                                                            |
-| accept_invalid_cert            | ACCEPT_INVALID_CERT            | Accept any certificate during TLS handshake. Insecure, use only for testing                                                                                              |
-| additional_dimension           | ADDITIONAL_DIMENSION           | Additional dimension specified by NAME=VALUE                                                                                                                             |
-| replace_dimensions             | REPLACE_DIMENSIONS             | Replace dimensions specified by NAME=VALUE,...                                                                                                                           |
-| include_metrics                | INCLUDE_METRICS                | Only publish the specified metrics (comma-separated list of glob patterns)                                                                                               |
-| exclude_metrics                | EXCLUDE_METRICS                | Never publish the specified metrics (comma-separated list of glob patterns)                                                                                              |
-| exclude_dimensions_for_metrics | EXCLUDE_DIMENSIONS_FOR_METRICS | Dimensions to exclude for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job,host;zk_up=host,pod;') |
+| Command-line argument          | ENV var                        | Description                                                                                                                                                                                |
+|--------------------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| aws_access_key_id              | AWS_ACCESS_KEY_ID              | AWS access key Id with permissions to publish CloudWatch metrics                                                                                                                           |
+| aws_secret_access_key          | AWS_SECRET_ACCESS_KEY          | AWS secret access key with permissions to publish CloudWatch metrics                                                                                                                       |
+| cloudwatch_namespace           | CLOUDWATCH_NAMESPACE           | CloudWatch Namespace                                                                                                                                                                       |
+| cloudwatch_region              | CLOUDWATCH_REGION              | CloudWatch AWS Region                                                                                                                                                                      |
+| cloudwatch_publish_timeout     | CLOUDWATCH_PUBLISH_TIMEOUT     | CloudWatch publish timeout in seconds                                                                                                                                                      |
+| prometheus_scrape_interval     | PROMETHEUS_SCRAPE_INTERVAL     | Prometheus scrape interval in seconds                                                                                                                                                      |
+| prometheus_scrape_url          | PROMETHEUS_SCRAPE_URL          | The URL to scrape Prometheus metrics from                                                                                                                                                  |
+| cert_path                      | CERT_PATH                      | Path to SSL Certificate file (when using SSL for `prometheus_scrape_url`)                                                                                                                  |
+| keyPath                        | KEY_PATH                       | Path to Key file (when using SSL for `prometheus_scrape_url`)                                                                                                                              |
+| accept_invalid_cert            | ACCEPT_INVALID_CERT            | Accept any certificate during TLS handshake. Insecure, use only for testing                                                                                                                |
+| additional_dimension           | ADDITIONAL_DIMENSION           | Additional dimension specified by NAME=VALUE                                                                                                                                               |
+| replace_dimensions             | REPLACE_DIMENSIONS             | Replace dimensions specified by NAME=VALUE,...                                                                                                                                             |
+| include_metrics                | INCLUDE_METRICS                | Only publish the specified metrics (comma-separated list of glob patterns)                                                                                                                 |
+| exclude_metrics                | EXCLUDE_METRICS                | Never publish the specified metrics (comma-separated list of glob patterns)                                                                                                                |
+| include_dimensions_for_metrics | INCLUDE_DIMENSIONS_FOR_METRICS | Only publish the specified dimensions for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job_id')                     |
+| exclude_dimensions_for_metrics | EXCLUDE_DIMENSIONS_FOR_METRICS | Never publish the specified dimensions for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job,host;zk_up=host,pod;')  |
 
 
 __NOTE__: If AWS credentials are not provided in the command-line arguments (`aws_access_key_id` and `aws_secret_access_key`)
@@ -107,6 +108,7 @@ export ACCEPT_INVALID_CERT=true
 # Optionally, restrict the subset of metrics to be exported to CloudWatch
 # export INCLUDE_METRICS='jvm_*'
 # export EXCLUDE_METRICS='jvm_memory_*,jvm_buffer_*'
+# export INCLUDE_DIMENSIONS_FOR_METRICS='jvm_memory_*=pod_id'
 # export EXCLUDE_DIMENSIONS_FOR_METRICS='jvm_memory_*=pod;jvm_buffer=job,pod'
 
 ./dist/bin/prometheus-to-cloudwatch
@@ -138,6 +140,7 @@ docker run -i --rm \
         -e ACCEPT_INVALID_CERT=true \
         -e INCLUDE_METRICS="" \
         -e EXCLUDE_METRICS="" \
+        -e INCLUDE_DIMENSIONS_FOR_METRICS="" \
         -e EXCLUDE_DIMENSIONS_FOR_METRICS="" \
         prometheus-to-cloudwatch
 ```
