@@ -7,6 +7,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"math"
+	"mime"
+	"net/http"
+	"sort"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -17,13 +25,6 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
-	"io"
-	"log"
-	"math"
-	"mime"
-	"net/http"
-	"sort"
-	"time"
 )
 
 const (
@@ -32,6 +33,28 @@ const (
 	cwUnitLabel    = "__cw_unit"
 	acceptHeader   = `application/vnd.google.protobuf;proto=io.prometheus.client.MetricFamily;encoding=delimited;q=0.7,text/plain;version=0.0.4;q=0.3`
 )
+
+type StringSet map[string]bool
+
+// MatcherWithStringSet defines a Glob matcher with a set of associated strings
+type MatcherWithStringSet struct {
+	Matcher glob.Glob
+	Set     StringSet
+}
+
+// getMatchingSet returns the first set that matches a string, or nil if there is no match
+func getMatchingSet(matcherSets []MatcherWithStringSet, str string) StringSet {
+	if matcherSets == nil {
+		return nil
+	}
+
+	for _, matcherWithSet := range matcherSets {
+		if matcherWithSet.Matcher.Match(str) {
+			return matcherWithSet.Set
+		}
+	}
+	return nil
+}
 
 // Config defines configuration options
 type Config struct {
@@ -79,6 +102,12 @@ type Config struct {
 
 	// Never publish the specified metrics (a list of glob patterns, e.g. ["tomcat_*"])
 	ExcludeMetrics []glob.Glob
+
+	// Only publish certain dimensions from the specified metrics
+	IncludeDimensionsForMetrics []MatcherWithStringSet
+
+	// Exclude certain dimensions from the specified metrics
+	ExcludeDimensionsForMetrics []MatcherWithStringSet
 }
 
 // Bridge pushes metrics to AWS CloudWatch
@@ -94,6 +123,8 @@ type Bridge struct {
 	replaceDimensions             map[string]string
 	includeMetrics                []glob.Glob
 	excludeMetrics                []glob.Glob
+	includeDimensionsForMetrics   []MatcherWithStringSet
+	excludeDimensionsForMetrics   []MatcherWithStringSet
 }
 
 // NewBridge initializes and returns a pointer to a Bridge using the
@@ -118,6 +149,8 @@ func NewBridge(c *Config) (*Bridge, error) {
 	b.replaceDimensions = c.ReplaceDimensions
 	b.includeMetrics = c.IncludeMetrics
 	b.excludeMetrics = c.ExcludeMetrics
+	b.includeDimensionsForMetrics = c.IncludeDimensionsForMetrics
+	b.excludeDimensionsForMetrics = c.ExcludeDimensionsForMetrics
 
 	if c.CloudWatchPublishInterval > 0 {
 		b.cloudWatchPublishInterval = c.CloudWatchPublishInterval
@@ -349,6 +382,27 @@ func getName(m model.Metric) string {
 	return ""
 }
 
+// shouldIncludeDimension determines whether or not to keep this dimension when publishing to cloudwatch
+// if an `includeSet` is specified, this will only return `true` for dimensions in that set
+func shouldIncludeDimension(dimName model.LabelName, includeSet, excludeSet StringSet) bool {
+	if dimName == model.MetricNameLabel || dimName == cwHighResLabel || dimName == cwUnitLabel {
+		return false
+	}
+
+	dimNameStr := string(dimName)
+
+	// blacklist first
+	if excludeSet != nil && excludeSet[dimNameStr] {
+		return false
+	}
+	// if no whitelist, keep it as it passed the blacklist
+	if includeSet == nil {
+		return true
+	}
+	// otherwise, check the whitelist
+	return includeSet[dimNameStr]
+}
+
 // getDimensions returns up to 10 dimensions for the provided metric - one for each label (except the __name__ label)
 // If a metric has more than 10 labels, it attempts to behave deterministically and returning the first 10 labels as dimensions
 func getDimensions(m model.Metric, num int, b *Bridge) ([]*cloudwatch.Dimension, []*cloudwatch.Dimension) {
@@ -359,9 +413,14 @@ func getDimensions(m model.Metric, num int, b *Bridge) ([]*cloudwatch.Dimension,
 	}
 
 	names := make([]string, 0, len(m))
-	for k := range m {
-		if !(k == model.MetricNameLabel || k == cwHighResLabel || k == cwUnitLabel) {
-			names = append(names, string(k))
+
+	metricName := getName(m)
+	includeSet := getMatchingSet(b.includeDimensionsForMetrics, metricName)
+	excludeSet := getMatchingSet(b.excludeDimensionsForMetrics, metricName)
+
+	for dimName := range m {
+		if shouldIncludeDimension(dimName, includeSet, excludeSet) {
+			names = append(names, string(dimName))
 		}
 	}
 
