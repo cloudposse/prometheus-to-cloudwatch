@@ -18,6 +18,7 @@ import (
 var (
 	awsAccessKeyId              = flag.String("aws_access_key_id", os.Getenv("AWS_ACCESS_KEY_ID"), "AWS access key Id with permissions to publish CloudWatch metrics")
 	awsSecretAccessKey          = flag.String("aws_secret_access_key", os.Getenv("AWS_SECRET_ACCESS_KEY"), "AWS secret access key with permissions to publish CloudWatch metrics")
+	awsSessionToken             = flag.String("aws_session_token", os.Getenv("AWS_SESSION_TOKEN"), "AWS session token with permissions to publish CloudWatch metrics")
 	cloudWatchNamespace         = flag.String("cloudwatch_namespace", os.Getenv("CLOUDWATCH_NAMESPACE"), "CloudWatch Namespace")
 	cloudWatchRegion            = flag.String("cloudwatch_region", os.Getenv("CLOUDWATCH_REGION"), "CloudWatch Region")
 	cloudWatchPublishTimeout    = flag.String("cloudwatch_publish_timeout", os.Getenv("CLOUDWATCH_PUBLISH_TIMEOUT"), "CloudWatch publish timeout in seconds")
@@ -172,6 +173,7 @@ func main() {
 		PrometheusSkipServerCertCheck: skipCertCheck,
 		AwsAccessKeyId:                *awsAccessKeyId,
 		AwsSecretAccessKey:            *awsSecretAccessKey,
+		AwsSessionToken:               *awsSessionToken,
 		AdditionalDimensions:          additionalDimensions,
 		ReplaceDimensions:             replaceDims,
 		IncludeMetrics:                includeMetricsList,

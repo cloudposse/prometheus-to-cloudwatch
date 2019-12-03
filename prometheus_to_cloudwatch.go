@@ -64,6 +64,9 @@ type Config struct {
 	// AWS secret access key with permissions to publish CloudWatch metrics
 	AwsSecretAccessKey string
 
+	// AWS session token with permissions to publish CloudWatch metrics
+	AwsSessionToken string
+
 	// Required. The CloudWatch namespace under which metrics should be published
 	CloudWatchNamespace string
 
@@ -174,7 +177,8 @@ func NewBridge(c *Config) (*Bridge, error) {
 	// If credentials are not provided in the variables, the chain of credential providers will search for credentials
 	// in environment variables, the shared credential file, and EC2 Instance Roles
 	if c.AwsAccessKeyId != "" && c.AwsSecretAccessKey != "" {
-		config.Credentials = credentials.NewStaticCredentials(c.AwsAccessKeyId, c.AwsSecretAccessKey, "")
+		// Utilise AWS session token if one is provided (Required for temporary AWS credentials)
+		config.Credentials = credentials.NewStaticCredentials(c.AwsAccessKeyId, c.AwsSecretAccessKey, c.AwsSessionToken)
 	}
 
 	sess, err := session.NewSession(config)
