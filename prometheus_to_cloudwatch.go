@@ -108,6 +108,9 @@ type Config struct {
 
 	// Exclude certain dimensions from the specified metrics
 	ExcludeDimensionsForMetrics []MatcherWithStringSet
+
+	// ForceHighRes forces all exported metrics to be sent as custom high-resolution metrics.
+	ForceHighRes bool
 }
 
 // Bridge pushes metrics to AWS CloudWatch
@@ -125,6 +128,7 @@ type Bridge struct {
 	excludeMetrics                []glob.Glob
 	includeDimensionsForMetrics   []MatcherWithStringSet
 	excludeDimensionsForMetrics   []MatcherWithStringSet
+	forceHighRes                  bool
 }
 
 // NewBridge initializes and returns a pointer to a Bridge using the
@@ -151,6 +155,7 @@ func NewBridge(c *Config) (*Bridge, error) {
 	b.excludeMetrics = c.ExcludeMetrics
 	b.includeDimensionsForMetrics = c.IncludeDimensionsForMetrics
 	b.excludeDimensionsForMetrics = c.ExcludeDimensionsForMetrics
+	b.forceHighRes = c.ForceHighRes
 
 	if c.CloudWatchPublishInterval > 0 {
 		b.cloudWatchPublishInterval = c.CloudWatchPublishInterval
@@ -327,7 +332,7 @@ func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample, b
 		SetValue(value).
 		SetTimestamp(s.Timestamp.Time()).
 		SetDimensions(append(kubeStateDimensions, getAdditionalDimensions(b)...)).
-		SetStorageResolution(getResolution(metric)).
+		SetStorageResolution(b.getResolution(metric)).
 		SetUnit(getUnit(metric))
 	data = append(data, datum)
 
@@ -338,7 +343,7 @@ func appendDatum(data []*cloudwatch.MetricDatum, name string, s *model.Sample, b
 			SetValue(value).
 			SetTimestamp(s.Timestamp.Time()).
 			SetDimensions(append(replacedDimensions, getAdditionalDimensions(b)...)).
-			SetStorageResolution(getResolution(metric)).
+			SetStorageResolution(b.getResolution(metric)).
 			SetUnit(getUnit(metric))
 		data = append(data, replacedDimensionDatum)
 	}
@@ -465,7 +470,10 @@ func getAdditionalDimensions(b *Bridge) []*cloudwatch.Dimension {
 }
 
 // Returns 1 if the metric contains a __cw_high_res label, otherwise returns 60
-func getResolution(m model.Metric) int64 {
+func (b *Bridge) getResolution(m model.Metric) int64 {
+	if b.forceHighRes {
+		return 1
+	}
 	if _, ok := m[cwHighResLabel]; ok {
 		return 1
 	}

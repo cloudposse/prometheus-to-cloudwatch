@@ -15,6 +15,8 @@ import (
 	"github.com/gobwas/glob"
 )
 
+var defaultForceHighRes, _ = strconv.ParseBool(os.Getenv("FORCE_HIGH_RES"))
+
 var (
 	awsAccessKeyId              = flag.String("aws_access_key_id", os.Getenv("AWS_ACCESS_KEY_ID"), "AWS access key Id with permissions to publish CloudWatch metrics")
 	awsSecretAccessKey          = flag.String("aws_secret_access_key", os.Getenv("AWS_SECRET_ACCESS_KEY"), "AWS secret access key with permissions to publish CloudWatch metrics")
@@ -33,6 +35,7 @@ var (
 	excludeMetrics              = flag.String("exclude_metrics", os.Getenv("EXCLUDE_METRICS"), "Never publish the specified metrics (comma-separated list of glob patterns, e.g. 'tomcat_*')")
 	includeDimensionsForMetrics = flag.String("include_dimensions_for_metrics", os.Getenv("INCLUDE_DIMENSIONS_FOR_METRICS"), "Only publish the specified dimensions for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job_id')")
 	excludeDimensionsForMetrics = flag.String("exclude_dimensions_for_metrics", os.Getenv("EXCLUDE_DIMENSIONS_FOR_METRICS"), "Never publish the specified dimensions for metrics (semi-colon-separated key values of comma-separated dimensions of METRIC=dim1,dim2;, e.g. 'flink_jobmanager=job,host;zk_up=host,pod;')")
+	forceHighRes                = flag.Bool("force_high_res", defaultForceHighRes, "Publish all metrics with high resolution, even when original metrics don't have the label "+cwHighResLabel)
 )
 
 // kevValMustParse takes a string and exits with a message if it cannot parse as KEY=VALUE
@@ -180,6 +183,7 @@ func main() {
 		ExcludeMetrics:                excludeMetricsList,
 		ExcludeDimensionsForMetrics:   excludeDimensionsForMetricsList,
 		IncludeDimensionsForMetrics:   includeDimensionsForMetricsList,
+		ForceHighRes:                  *forceHighRes,
 	}
 
 	if *prometheusScrapeInterval != "" {
