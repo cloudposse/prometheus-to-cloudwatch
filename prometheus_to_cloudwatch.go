@@ -521,7 +521,15 @@ func decodeContent(client *http.Client, url string, ch chan<- *dto.MetricFamily)
 	if err != nil {
 		log.Fatalf("prometheus-to-cloudwatch: Error: creating GET request for URL %q failed: %s", url, err)
 	}
-	req.Header.Add("Accept", acceptHeader)
+
+	var ah string
+	if acceptHeaderOverride != nil && *acceptHeaderOverride != "" {
+		ah = *acceptHeaderOverride
+	} else {
+		ah = acceptHeader
+	}
+	req.Header.Add("Accept", ah)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatalf("prometheus-to-cloudwatch: Error: executing GET request for URL %q failed: %s", url, err)
