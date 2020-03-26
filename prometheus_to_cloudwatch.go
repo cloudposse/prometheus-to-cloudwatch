@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
 	"io"
 	"log"
 	"math"
@@ -22,6 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/gobwas/glob"
 	"github.com/matttproud/golang_protobuf_extensions/pbutil"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
@@ -111,6 +113,12 @@ type Config struct {
 
 	// ForceHighRes forces all exported metrics to be sent as custom high-resolution metrics.
 	ForceHighRes bool
+
+	// ListenAddress is the address to expose metrics.
+	ListenAddress string
+
+	// MetricsPath is the path under which to expose metrics.
+	MetricsPath string
 }
 
 // Bridge pushes metrics to AWS CloudWatch
@@ -129,12 +137,23 @@ type Bridge struct {
 	includeDimensionsForMetrics   []MatcherWithStringSet
 	excludeDimensionsForMetrics   []MatcherWithStringSet
 	forceHighRes                  bool
+	listenAddress                 string
+	metricsPath                   string
+	metrics                       *metrics
+}
+
+type metrics struct {
+	publishesTotal            prometheus.Counter
+	publishErrorsTotal        prometheus.Counter
+	publishDuration           prometheus.Histogram
+	metricsTotal              prometheus.Counter
 }
 
 // NewBridge initializes and returns a pointer to a Bridge using the
 // supplied configuration, or an error if there is a problem with the configuration
 func NewBridge(c *Config) (*Bridge, error) {
 	b := &Bridge{}
+	b.metrics = newMetrics(c, prometheus.DefaultRegisterer)
 
 	if c.CloudWatchNamespace == "" {
 		return nil, errors.New("CloudWatchNamespace required")
@@ -156,6 +175,8 @@ func NewBridge(c *Config) (*Bridge, error) {
 	b.includeDimensionsForMetrics = c.IncludeDimensionsForMetrics
 	b.excludeDimensionsForMetrics = c.ExcludeDimensionsForMetrics
 	b.forceHighRes = c.ForceHighRes
+	b.listenAddress = c.ListenAddress
+	b.metricsPath = c.MetricsPath
 
 	if c.CloudWatchPublishInterval > 0 {
 		b.cloudWatchPublishInterval = c.CloudWatchPublishInterval
@@ -196,7 +217,22 @@ func NewBridge(c *Config) (*Bridge, error) {
 }
 
 // Run starts a loop that will push metrics to Cloudwatch at the configured interval. Accepts a context.Context to support cancellation
-func (b *Bridge) Run(ctx context.Context) {
+func (b *Bridge) Run(ctx context.Context, cancel context.CancelFunc) {
+	go func() {
+		http.Handle(b.metricsPath, promhttp.Handler())
+		log.Println(fmt.Sprintf("prometheus-to-cloudwatch: Listening on %s", b.listenAddress))
+		server := &http.Server{Addr: b.listenAddress, Handler: nil}
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalln(fmt.Sprintf("prometheus-to-cloudwatch: Failed to listen on %s", b.listenAddress), err)
+			cancel()
+		}
+		defer func() {
+			if err := server.Close(); err != nil {
+				log.Fatalln("prometheus-to-cloudwatch: Error on closing the server", err)
+			}
+		}()
+	}()
+
 	ticker := time.NewTicker(b.cloudWatchPublishInterval)
 	defer ticker.Stop()
 
@@ -215,9 +251,12 @@ func (b *Bridge) Run(ctx context.Context) {
 			count, err := b.publishMetricsToCloudWatch(metricFamilies)
 			if err != nil {
 				log.Println("prometheus-to-cloudwatch: error publishing to CloudWatch:", err)
+				b.metrics.publishErrorsTotal.Inc()
 			}
 
 			log.Println(fmt.Sprintf("prometheus-to-cloudwatch: published %d metrics to CloudWatch", count))
+			b.metrics.metricsTotal.Add(float64(count))
+			b.metrics.publishesTotal.Inc()
 
 		case <-ctx.Done():
 			log.Println("prometheus-to-cloudwatch: stopping")
@@ -226,11 +265,63 @@ func (b *Bridge) Run(ctx context.Context) {
 	}
 }
 
+func newMetrics(c *Config, r prometheus.Registerer) *metrics {
+	m := &metrics{}
+
+	m.publishesTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "cloudwatch_bridge_publishes_total",
+		Help: "Number of publishes to cloudwatch.",
+		ConstLabels: map[string]string{
+			"cloudwatchRegion":  c.CloudWatchRegion,
+			"prometheusScrapeUrl": c.PrometheusScrapeUrl,
+		},
+	})
+	m.publishErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "cloudwatch_bridge_publish_errors_total",
+		Help: "Number of cloudwatch publish errors.",
+		ConstLabels: map[string]string{
+			"cloudwatchRegion":  c.CloudWatchRegion,
+			"prometheusScrapeUrl": c.PrometheusScrapeUrl,
+		},
+	})
+	m.publishDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "cloudwatch_bridge_publish_duration_seconds",
+		Help: "Duration of cloudwatch publishes",
+		ConstLabels: map[string]string{
+			"cloudwatchRegion":  c.CloudWatchRegion,
+			"prometheusScrapeUrl": c.PrometheusScrapeUrl,
+		},
+	})
+
+	m.metricsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "cloudwatch_bridge_metrics_total",
+		Help: "Number of mmetrics published to cloudwatch.",
+		ConstLabels: map[string]string{
+			"cloudwatchRegion":  c.CloudWatchRegion,
+			"prometheusScrapeUrl": c.PrometheusScrapeUrl,
+		},
+	})
+
+
+	if r != nil {
+		r.MustRegister(
+			m.publishesTotal,
+			m.publishErrorsTotal,
+			m.publishDuration,
+			m.metricsTotal,
+		)
+	}
+	return m
+}
+
 // NOTE: The CloudWatch API has the following limitations:
 //  - Max 40kb request size
 //	- Single namespace per request
 //	- Max 10 dimensions per metric
 func (b *Bridge) publishMetricsToCloudWatch(mfs []*dto.MetricFamily) (count int, e error) {
+	start := time.Now()
+	defer func() { b.metrics.publishDuration.Observe(time.Since(start).Seconds()) }()
+
 	vec, err := expfmt.ExtractSamples(&expfmt.DecodeOptions{Timestamp: model.Now()}, mfs...)
 
 	if err != nil {
