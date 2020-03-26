@@ -4,11 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -48,6 +51,7 @@ func keyValMustParse(str, message string) (string, string) {
 	}
 	return kv[0], kv[1]
 }
+
 
 // dimensionMatcherListMustParse takes a string and a flag name and exists with a message
 // if it cannot parse as GLOB=dim1,dim2;GLOB2=dim3
@@ -89,6 +93,43 @@ func stringSliceToSet(slice []string) StringSet {
 	}
 
 	return boolMap
+}
+
+func startHttpServer(ctx context.Context) {
+	var metricsListenAddress = *listenAddress
+	if metricsListenAddress == "" {
+		metricsListenAddress = ":9698"
+	}
+
+	var metricsListenPath = *metricsPath
+	if metricsListenPath == "" {
+		metricsListenPath = "/metrics"
+	}
+
+	httpServerExitDone := &sync.WaitGroup{}
+
+	server := &http.Server{Addr: metricsListenAddress}
+	http.Handle(metricsListenPath, promhttp.Handler())
+
+	go func() {
+		httpServerExitDone.Add(1)
+		defer httpServerExitDone.Done()
+		log.Println(fmt.Sprintf("prometheus-to-cloudwatch: Http server listening on %s", metricsListenAddress))
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalln(fmt.Sprintf("prometheus-to-cloudwatch: Http server failed to listen on %s", metricsListenAddress), err)
+		}
+	}()
+
+	<-ctx.Done()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalln("prometheus-to-cloudwatch: Failed to gracefully stop Http server", err)
+	}
+
+	httpServerExitDone.Wait()
 }
 
 func main() {
@@ -169,16 +210,6 @@ func main() {
 		includeDimensionsForMetricsList = dimensionMatcherListMustParse(*includeDimensionsForMetrics, "-include_dimensions_for_metrics")
 	}
 
-	var metricsListenAddress = *listenAddress
-	if metricsListenAddress == "" {
-		metricsListenAddress = ":9698"
-	}
-
-	var metricsListenPath = *metricsPath
-	if metricsListenPath == "" {
-		metricsListenPath = "/metrics"
-	}
-
 	config := &Config{
 		CloudWatchNamespace:           *cloudWatchNamespace,
 		CloudWatchRegion:              *cloudWatchRegion,
@@ -196,8 +227,6 @@ func main() {
 		ExcludeDimensionsForMetrics:   excludeDimensionsForMetricsList,
 		IncludeDimensionsForMetrics:   includeDimensionsForMetricsList,
 		ForceHighRes:                  *forceHighRes,
-		ListenAddress:                 metricsListenAddress,
-		MetricsPath:                   metricsListenPath,
 	}
 
 	if *prometheusScrapeInterval != "" {
@@ -241,5 +270,6 @@ func main() {
 		}
 	}()
 
-	bridge.Run(ctx, cancel)
+	startHttpServer(ctx)
+	bridge.Run(ctx)
 }

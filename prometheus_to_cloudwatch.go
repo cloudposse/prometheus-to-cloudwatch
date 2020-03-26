@@ -23,7 +23,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/gobwas/glob"
 	"github.com/matttproud/golang_protobuf_extensions/pbutil"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
@@ -217,22 +216,7 @@ func NewBridge(c *Config) (*Bridge, error) {
 }
 
 // Run starts a loop that will push metrics to Cloudwatch at the configured interval. Accepts a context.Context to support cancellation
-func (b *Bridge) Run(ctx context.Context, cancel context.CancelFunc) {
-	go func() {
-		http.Handle(b.metricsPath, promhttp.Handler())
-		log.Println(fmt.Sprintf("prometheus-to-cloudwatch: Listening on %s", b.listenAddress))
-		server := &http.Server{Addr: b.listenAddress, Handler: nil}
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalln(fmt.Sprintf("prometheus-to-cloudwatch: Failed to listen on %s", b.listenAddress), err)
-			cancel()
-		}
-		defer func() {
-			if err := server.Close(); err != nil {
-				log.Fatalln("prometheus-to-cloudwatch: Error on closing the server", err)
-			}
-		}()
-	}()
-
+func (b *Bridge) Run(ctx context.Context) {
 	ticker := time.NewTicker(b.cloudWatchPublishInterval)
 	defer ticker.Stop()
 
@@ -301,7 +285,6 @@ func newMetrics(c *Config, r prometheus.Registerer) *metrics {
 			"prometheusScrapeUrl": c.PrometheusScrapeUrl,
 		},
 	})
-
 
 	if r != nil {
 		r.MustRegister(
