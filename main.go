@@ -126,10 +126,10 @@ func startHttpServer(ctx context.Context) {
 
 	<-ctx.Done()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Fatalln("prometheus-to-cloudwatch: Failed to gracefully stop Http server", err)
 	}
 
