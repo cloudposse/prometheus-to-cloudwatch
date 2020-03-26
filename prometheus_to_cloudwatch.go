@@ -112,12 +112,6 @@ type Config struct {
 
 	// ForceHighRes forces all exported metrics to be sent as custom high-resolution metrics.
 	ForceHighRes bool
-
-	// ListenAddress is the address to expose metrics.
-	ListenAddress string
-
-	// MetricsPath is the path under which to expose metrics.
-	MetricsPath string
 }
 
 // Bridge pushes metrics to AWS CloudWatch
@@ -174,8 +168,6 @@ func NewBridge(c *Config) (*Bridge, error) {
 	b.includeDimensionsForMetrics = c.IncludeDimensionsForMetrics
 	b.excludeDimensionsForMetrics = c.ExcludeDimensionsForMetrics
 	b.forceHighRes = c.ForceHighRes
-	b.listenAddress = c.ListenAddress
-	b.metricsPath = c.MetricsPath
 
 	if c.CloudWatchPublishInterval > 0 {
 		b.cloudWatchPublishInterval = c.CloudWatchPublishInterval
