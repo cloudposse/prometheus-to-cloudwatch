@@ -52,7 +52,6 @@ func keyValMustParse(str, message string) (string, string) {
 	return kv[0], kv[1]
 }
 
-
 // dimensionMatcherListMustParse takes a string and a flag name and exists with a message
 // if it cannot parse as GLOB=dim1,dim2;GLOB2=dim3
 func dimensionMatcherListMustParse(str, flag string) []MatcherWithStringSet {
