@@ -13,6 +13,7 @@ import (
 	"math"
 	"mime"
 	"net/http"
+	"net/url"
 	"sort"
 	"time"
 
@@ -242,38 +243,35 @@ func (b *Bridge) Run(ctx context.Context) {
 func newMetrics(c *Config, r prometheus.Registerer) *metrics {
 	m := &metrics{}
 
+	prometheusScrapeUrl := c.PrometheusScrapeUrl
+	if unescape, err := url.QueryUnescape(c.PrometheusScrapeUrl); err == nil {
+		prometheusScrapeUrl = unescape
+	}
+	labels := map[string]string{
+		"cloudwatchRegion":  c.CloudWatchRegion,
+		"prometheusScrapeUrl": prometheusScrapeUrl,
+	}
+
 	m.publishesTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "cloudwatch_bridge_publishes_total",
 		Help: "Number of publishes to cloudwatch.",
-		ConstLabels: map[string]string{
-			"cloudwatchRegion":  c.CloudWatchRegion,
-			"prometheusScrapeUrl": c.PrometheusScrapeUrl,
-		},
+		ConstLabels: labels,
 	})
 	m.publishErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "cloudwatch_bridge_publish_errors_total",
 		Help: "Number of cloudwatch publish errors.",
-		ConstLabels: map[string]string{
-			"cloudwatchRegion":  c.CloudWatchRegion,
-			"prometheusScrapeUrl": c.PrometheusScrapeUrl,
-		},
+		ConstLabels: labels,
 	})
 	m.publishDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name: "cloudwatch_bridge_publish_duration_seconds",
 		Help: "Duration of cloudwatch publishes",
-		ConstLabels: map[string]string{
-			"cloudwatchRegion":  c.CloudWatchRegion,
-			"prometheusScrapeUrl": c.PrometheusScrapeUrl,
-		},
+		ConstLabels: labels,
 	})
 
 	m.metricsTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "cloudwatch_bridge_metrics_total",
 		Help: "Number of mmetrics published to cloudwatch.",
-		ConstLabels: map[string]string{
-			"cloudwatchRegion":  c.CloudWatchRegion,
-			"prometheusScrapeUrl": c.PrometheusScrapeUrl,
-		},
+		ConstLabels: labels,
 	})
 
 	if r != nil {

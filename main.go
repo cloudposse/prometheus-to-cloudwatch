@@ -99,7 +99,7 @@ func stringSliceToSet(slice []string) StringSet {
 	return boolMap
 }
 
-func startHttpServer(ctx context.Context) {
+func startHttpServer(shutdownWaiter *sync.WaitGroup) *http.Server {
 	var metricsListenAddress = *listenAddress
 	if metricsListenAddress == "" {
 		metricsListenAddress = DEFAULT_LISTEN_ADDRESS
@@ -110,30 +110,18 @@ func startHttpServer(ctx context.Context) {
 		metricsListenPath = DEFAULT_METRICS_PATH
 	}
 
-	httpServerExitDone := &sync.WaitGroup{}
-
 	server := &http.Server{Addr: metricsListenAddress}
 	http.Handle(metricsListenPath, promhttp.Handler())
 
 	go func() {
-		httpServerExitDone.Add(1)
-		defer httpServerExitDone.Done()
+		defer shutdownWaiter.Done()
 		log.Println(fmt.Sprintf("prometheus-to-cloudwatch: Http server listening on %s", metricsListenAddress))
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalln(fmt.Sprintf("prometheus-to-cloudwatch: Http server failed to listen on %s", metricsListenAddress), err)
 		}
 	}()
 
-	<-ctx.Done()
-
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalln("prometheus-to-cloudwatch: Failed to gracefully stop Http server", err)
-	}
-
-	httpServerExitDone.Wait()
+	return server
 }
 
 func main() {
@@ -274,6 +262,19 @@ func main() {
 		}
 	}()
 
-	startHttpServer(ctx)
+
+	httpServerExitDone := &sync.WaitGroup{}
+	httpServerExitDone.Add(1)
+	server := startHttpServer(httpServerExitDone)
+
 	bridge.Run(ctx)
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatalln("prometheus-to-cloudwatch: Failed to gracefully stop Http server", err)
+	}
+
+	httpServerExitDone.Wait()
 }
