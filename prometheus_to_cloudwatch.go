@@ -130,8 +130,6 @@ type Bridge struct {
 	includeDimensionsForMetrics   []MatcherWithStringSet
 	excludeDimensionsForMetrics   []MatcherWithStringSet
 	forceHighRes                  bool
-	listenAddress                 string
-	metricsPath                   string
 	metrics                       *metrics
 }
 
