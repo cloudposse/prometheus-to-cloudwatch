@@ -241,7 +241,7 @@ func (b *Bridge) publishMetricsToCloudWatch(mfs []*dto.MetricFamily) (count int,
 
 	for _, s := range vec {
 		name := getName(s.Metric)
-		if b.shouldIgnoreMetric(name) {
+		if b.shouldIgnoreMetric(name, s) {
 			continue
 		}
 		data = appendDatum(data, name, s, b)
@@ -291,13 +291,40 @@ func compressPayload(r *request.Request) {
 	r.HTTPRequest.Header.Set("Content-Encoding", "gzip")
 }
 
-func (b *Bridge) shouldIgnoreMetric(metricName string) bool {
+func (b *Bridge) shouldIgnoreMetric(metricName string, sample *model.Sample) bool {
 	// Blacklist takes priority over the whitelist
 	if anyPatternMatches(b.excludeMetrics, metricName) {
 		return true
 	} else if len(b.includeMetrics) == 0 {
 		return false
 	} else if anyPatternMatches(b.includeMetrics, metricName) {
+		if b.includeDimensionsForMetrics != nil && len(b.includeDimensionsForMetrics) > 0 {
+			for _, d := range b.excludeDimensionsForMetrics {
+				for dimName, dimValue := range sample.Metric {
+					if dimName == model.MetricNameLabel || dimName == cwHighResLabel || dimName == cwUnitLabel {
+						continue
+					}
+					if d.Matcher.Match(string(dimName)) {
+						if d.Set[string(dimValue)] {
+							return true
+						}
+					}
+				}
+			}
+			for _, d := range b.includeDimensionsForMetrics {
+				for dimName, dimValue := range sample.Metric {
+					if dimName == model.MetricNameLabel || dimName == cwHighResLabel || dimName == cwUnitLabel {
+						continue
+					}
+					if d.Matcher.Match(string(dimName)) {
+						if d.Set[string(dimValue)] {
+							return false
+						}
+					}
+				}
+			}
+			return true
+		}
 		return false
 	}
 	return true
