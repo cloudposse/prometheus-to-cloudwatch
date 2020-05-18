@@ -1,4 +1,4 @@
-FROM golang:1.10.0 as builder
+FROM golang:1.13.11 as builder
 RUN mkdir -p /go/src/github.com/cloudposse/prometheus-to-cloudwatch
 WORKDIR /go/src/github.com/cloudposse/prometheus-to-cloudwatch
 COPY . .

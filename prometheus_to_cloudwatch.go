@@ -514,6 +514,7 @@ func fetchMetricFamilies(
 	}
 	client := &http.Client{Transport: transport}
 	decodeContent(client, url, ch)
+	client.CloseIdleConnections()
 }
 
 func decodeContent(client *http.Client, url string, ch chan<- *dto.MetricFamily) {
