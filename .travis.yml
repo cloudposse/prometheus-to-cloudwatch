@@ -2,7 +2,7 @@ sudo: required
 
 language: go
 go:
-  - 1.9.x
+  - 1.14.x
 
 addons:
   apt:
@@ -20,14 +20,10 @@ services:
 install:
 - make init
 - make travis/docker-login
-- make go/deps-build
 - make go/deps-dev
-- make go-get
 
 script:
-- make go/deps
-- make go/test
-- make go/lint
+- make lint
 - make go/build-all
 - ls -l release/
 - make docker/build
