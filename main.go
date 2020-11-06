@@ -30,6 +30,7 @@ var (
 	keyPath                     = flag.String("key_path", os.Getenv("KEY_PATH"), "Path to Key file (when using SSL for `prometheus_scrape_url`)")
 	skipServerCertCheck         = flag.String("accept_invalid_cert", os.Getenv("ACCEPT_INVALID_CERT"), "Accept any certificate during TLS handshake. Insecure, use only for testing")
 	additionalDimension         = flag.String("additional_dimension", os.Getenv("ADDITIONAL_DIMENSION"), "Additional dimension specified by NAME=VALUE")
+	additionalDimensions        = flag.String("additional_dimensions", os.Getenv("ADDITIONAL_DIMENSIONS"), "Additional dimensions specified by NAME=VALUE,...")
 	replaceDimensions           = flag.String("replace_dimensions", os.Getenv("REPLACE_DIMENSIONS"), "replace dimensions specified by NAME=VALUE,...")
 	includeMetrics              = flag.String("include_metrics", os.Getenv("INCLUDE_METRICS"), "Only publish the specified metrics (comma-separated list of glob patterns, e.g. 'up,http_*')")
 	excludeMetrics              = flag.String("exclude_metrics", os.Getenv("EXCLUDE_METRICS"), "Never publish the specified metrics (comma-separated list of glob patterns, e.g. 'tomcat_*')")
@@ -118,10 +119,20 @@ func main() {
 		}
 	}
 
-	var additionalDimensions = map[string]string{}
+	var additionalDims = map[string]string{}
 	if *additionalDimension != "" {
 		key, val := keyValMustParse(*additionalDimension, "-additionalDimension must be formatted as NAME=VALUE")
-		additionalDimensions[key] = val
+		additionalDims[key] = val
+  }
+
+  if *additionalDimensions != "" {
+		kvs := strings.Split(*additionalDimensions, ",")
+		if len(kvs) > 0 {
+			for _, rd := range kvs {
+				key, val := keyValMustParse(rd, "-additionalDimensions must be formatted as NAME=VALUE,...")
+				additionalDims[key] = val
+			}
+		}
 	}
 
 	var replaceDims = map[string]string{}
@@ -177,7 +188,7 @@ func main() {
 		AwsAccessKeyId:                *awsAccessKeyId,
 		AwsSecretAccessKey:            *awsSecretAccessKey,
 		AwsSessionToken:               *awsSessionToken,
-		AdditionalDimensions:          additionalDimensions,
+		AdditionalDimensions:          additionalDims,
 		ReplaceDimensions:             replaceDims,
 		IncludeMetrics:                includeMetricsList,
 		ExcludeMetrics:                excludeMetricsList,
