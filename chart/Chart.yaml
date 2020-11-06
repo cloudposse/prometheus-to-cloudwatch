@@ -2,4 +2,4 @@ apiVersion: v1
 appVersion: 0.1.2
 description: A Helm chart for prometheus-to-cloudwatch
 name: prometheus-to-cloudwatch
-version: 0.1.2
+version: 0.1.3
