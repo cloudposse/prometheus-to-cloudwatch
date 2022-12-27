@@ -1,0 +1,32 @@
+name: BUILD Images
+on:
+  pull_request:
+  push:
+    paths:
+      - '.github/workflows/images.yaml'
+      - 'Dockerfiles'
+    branches:
+      - main
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    name: Build docker image
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Get short SHA
+        id: slug
+        run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
+
+      - name: 'Artifact: k8s/prometheus-to-cloudwatch'
+        uses: aevea/action-kaniko@master
+        with:
+          registry: artifact.onwalk.net
+          username: admin  
+          password: ${{ secrets.HELM_REPO_PASSWORD }}
+          build_file: ./Dockerfiles/prometheus-to-cloudwatch.Dockerfile
+          image: k8s/prometheus-to-cloudwatch
+          tag: ${{ steps.slug.outputs.sha8 }}
+          cache: true
+          cache_registry: cache
