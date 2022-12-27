@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - '.github/workflows/images.yaml'
-      - 'Dockerfiles'
+      - 'Dockerfile'
     branches:
       - main
 
