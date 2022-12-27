@@ -9,7 +9,7 @@ on:
       - 'prometheus_to_cloudwatch.go'
       - '.github/workflows/images.yaml'
     branches:
-      - master
+      - main
 
 jobs:
   docker:
