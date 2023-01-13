@@ -1,6 +1,6 @@
 FROM ghcr.io/fluxcd/image-automation-controller:v0.24.0 as build
 
-FROM artifact.onwalk.net/alpine-ca:3.13
+FROM artifact.onwalk.net/k8s/alpine-ca:3.13
 
 # Copy over binary from build
 COPY --from=build /image-automation-controller /usr/local/bin/
