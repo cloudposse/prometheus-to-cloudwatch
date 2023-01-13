@@ -3,7 +3,7 @@ on:
   pull_request:
   push:
     paths:
-      - 'image-automation-controller/Dockerfile'
+      - 'dockerfiles/flux-image-automation-controller.Dockerfile'
       - '.github/workflows/flux-image-automation-controller.yaml'
     branches:
       - main
