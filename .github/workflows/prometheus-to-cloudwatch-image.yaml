@@ -3,11 +3,11 @@ on:
   pull_request:
   push:
     paths:
-      - 'main.go'
-      - 'Makefile'
-      - 'Dockerfile'
-      - 'prometheus_to_cloudwatch.go'
-      - '.github/workflows/images.yaml'
+      - 'prometheus-to-cloudwatch/main.go'
+      - 'prometheus-to-cloudwatch/Makefile'
+      - 'prometheus-to-cloudwatch/Dockerfile'
+      - 'prometheus-to-cloudwatch/prometheus_to_cloudwatch.go'
+      - '.github/workflows/prometheus-to-cloudwatch-image.yaml'
     branches:
       - main
 
