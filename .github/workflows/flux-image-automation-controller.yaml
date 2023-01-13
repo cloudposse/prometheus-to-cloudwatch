@@ -3,7 +3,7 @@ on:
   pull_request:
   push:
     paths:
-      - 'image-automation-controller/Dockerfile'
+      - 'dockerfiles/flux-helm-flux-image-automation-controller.Dockerfile'
       - '.github/workflows/flux-image-automation-controller.yaml'
     branches:
       - main
@@ -21,7 +21,6 @@ jobs:
           registry: artifact.onwalk.net
           username: admin
           password: ${{ secrets.HELM_REPO_PASSWORD }}
-          path: image-automation-controller
           build_file: dockerfiles/flux-helm-flux-image-automation-controller.Dockerfile
           image: k8s/fluxcd/image-automation-controller
           tag: v0.24.0
