@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@master
 
       - name: 'Artifact: build && push fluxcd/image-automation-controller image'
-        uses: aevea/action-kaniko@master
+        uses: aevea/action-kaniko@v0.10.0
         with:
           registry: artifact.onwalk.net
           username: admin
