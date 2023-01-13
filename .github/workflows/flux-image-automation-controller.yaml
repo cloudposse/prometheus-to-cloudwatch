@@ -16,12 +16,12 @@ jobs:
       - uses: actions/checkout@master
 
       - name: 'Artifact: build && push fluxcd/image-automation-controller image'
+        working-directory: ${GITHUB_WORKSPACE}/image-automation-controller
         uses: aevea/action-kaniko@master
         with:
           registry: artifact.onwalk.net
           username: admin
           password: ${{ secrets.HELM_REPO_PASSWORD }}
-          path: ./image-automation-controller
           build_file: Dockerfile
           image: k8s/fluxcd/image-automation-controller
           tag: v0.24.0
