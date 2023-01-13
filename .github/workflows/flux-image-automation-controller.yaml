@@ -9,7 +9,7 @@ on:
       - main
 defaults:
   run:
-    working-directory: image-automation-controller
+    working-directory: /home/runner/work/dockerfiles/dockerfiles/image-automation-controller
 
 jobs:
   docker:
@@ -24,7 +24,7 @@ jobs:
           registry: artifact.onwalk.net
           username: admin
           password: ${{ secrets.HELM_REPO_PASSWORD }}
-          build_file: Dockerfile
+          build_file: ./Dockerfile
           image: k8s/fluxcd/image-automation-controller
           tag: v0.24.0
           cache: true
