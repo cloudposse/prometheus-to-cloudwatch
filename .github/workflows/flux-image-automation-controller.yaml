@@ -7,6 +7,9 @@ on:
       - '.github/workflows/flux-image-automation-controller.yaml'
     branches:
       - main
+defaults:
+  run:
+    working-directory: image-automation-controller
 
 jobs:
   docker:
@@ -16,7 +19,6 @@ jobs:
       - uses: actions/checkout@master
 
       - name: 'Artifact: build && push fluxcd/image-automation-controller image'
-        working-directory: ${GITHUB_WORKSPACE}/image-automation-controller
         uses: aevea/action-kaniko@master
         with:
           registry: artifact.onwalk.net
