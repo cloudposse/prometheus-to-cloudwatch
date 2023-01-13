@@ -1,0 +1,28 @@
+name: Build & push flux-automation-controller image
+on:
+  pull_request:
+  push:
+    paths:
+      - 'dockerfiles/flux-image-reflector-controller.Dockerfile'
+      - '.github/workflows/flux-image-reflector-controller.yaml'
+    branches:
+      - main
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    name: Build docker image
+    steps:
+      - uses: actions/checkout@master
+
+      - name: 'Artifact: build && push fluxcd/image-reflector-controller image'
+        uses: aevea/action-kaniko@v0.10.0
+        with:
+          registry: artifact.onwalk.net
+          username: admin
+          password: ${{ secrets.HELM_REPO_PASSWORD }}
+          build_file: dockerfiles/flux-image-automation-controller.Dockerfile
+          image: k8s/fluxcd/image-reflector-controller
+          tag: v0.24.0
+          cache: true
+          cache_registry: cache
