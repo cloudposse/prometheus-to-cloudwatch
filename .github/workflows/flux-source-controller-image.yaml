@@ -1,0 +1,28 @@
+name: Build & push source-controller image
+on:
+  pull_request:
+  push:
+    paths:
+      - '.github/workflows/flux-source-controller-image.yaml'
+      - 'dockerfiles/flux-source-controller.Dockerfile'
+    branches:
+      - main
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    name: Build docker image
+    steps:
+      - uses: actions/checkout@master
+
+      - name: 'Artifact: build && push fluxcd/source-controller image'
+        uses: aevea/action-kaniko@v0.10.0
+        with:
+          registry: artifact.onwalk.net
+          username: admin
+          password: ${{ secrets.HELM_REPO_PASSWORD }}
+          build_file: dockerfiles/flux-source-controller.Dockerfile
+          image: k8s/fluxcd/source-controller
+          tag: v0.24.0
+          cache: true
+          cache_registry: cache
