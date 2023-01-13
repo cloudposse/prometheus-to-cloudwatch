@@ -21,7 +21,7 @@ jobs:
           registry: artifact.onwalk.net
           username: admin
           password: ${{ secrets.HELM_REPO_PASSWORD }}
-          path: image-automation-controller
+          path: ./image-automation-controller
           build_file: Dockerfile
           image: k8s/fluxcd/image-automation-controller
           tag: v0.24.0
