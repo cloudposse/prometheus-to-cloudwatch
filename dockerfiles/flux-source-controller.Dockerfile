@@ -4,7 +4,7 @@ FROM artifact.onwalk.net/k8s/alpine-ca:3.13 as prod
 
 ARG TARGETPLATFORM
 RUN apk --no-cache add ca-certificates && update-ca-certificates
-COPY --from=build /source-controller /usr/local/bin/
+COPY --from=build /usr/local/bin/source-controller /usr/local/bin/
 USER 65534:65534
 
 ENTRYPOINT [ "source-controller" ]
